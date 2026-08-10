@@ -280,12 +280,13 @@ def process(leads_rows, meta_rows):
         {"day": ["day", "data"], "campaign": ["campaign name", "campaign"], "adset": ["ad set name", "adset"],
          "ad": ["ad name"], "spent": ["amount spent", "valor gasto", "gasto"], "impr": ["impressions", "impress"],
          "clicks": ["link clicks", "clicks", "cliques"], "leads": ["leads"],
+         "pv": ["landing page views", "page views", "pageviews"],
          # Link do criativo (ex. Instagram) — coluna opcional adicionada pelo cliente
          # na aba de mídia. Usada na aba Relatório (Top/Piores anúncios) para linkar
          # o anúncio. Aliases cobrem variações do cabeçalho.
          "link": ["creative instagram permalink", "instagram permalink", "permalink",
                   "creative link", "link do anuncio", "link do criativo"]},
-        {"day": 0, "campaign": 1, "adset": 2, "ad": 3, "spent": 4, "impr": 5, "clicks": 6, "leads": 7},
+        {"day": 0, "campaign": 1, "adset": 2, "ad": 3, "spent": 4, "impr": 5, "clicks": 6, "leads": 8, "pv": 7},
     )
 
     meta = []
@@ -308,6 +309,7 @@ def process(leads_rows, meta_rows):
             "sp": round(to_float(cell(row, midx["spent"])), 4),
             "im": to_float(cell(row, midx["impr"])),
             "cl": to_float(cell(row, midx["clicks"])),
+            "pv": to_float(cell(row, midx["pv"])),
             "ml": to_float(cell(row, midx["leads"])),
         })
 

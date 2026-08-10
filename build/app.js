@@ -25,7 +25,7 @@ const TODAY = B.today || B.date_max;
 
 /* ---------------- STATE ---------------- */
 const STATE = {
-  page:'geral', from:B.date_min, to:B.date_max, preset:'todo', tax:false,
+  page:'geral', from:B.date_min, to:B.date_max, preset:'todo', tax:true,
   selDays:new Set(),
   mSelC:new Set(), mSelA:new Set(), mSelAd:new Set(),
   sort:{}, colw: JSON.parse(localStorage.getItem('dm_colw')||'{}'),
@@ -43,10 +43,11 @@ const metaActive  = ()=> META.filter(m=>dateActive(m.d));
 
 /* ---------------- aggregation ---------------- */
 function derive(a){
-  const g=a.sp*taxf();
-  return {gasto:g, impr:a.im, clicks:a.cl, leads:a.leads, mqls:a.mqls,
+  const g=a.sp*taxf(), pv=a.pv||0;
+  return {gasto:g, impr:a.im, clicks:a.cl, pv, leads:a.leads, mqls:a.mqls,
     cpm:a.im?g/a.im*1000:null, ctr:a.im?a.cl/a.im:null, cpc:a.cl?g/a.cl:null,
-    convf:a.cl?a.leads/a.cl:null,
+    cr:a.cl?pv/a.cl:null, cpv:pv?g/pv:null,
+    convlp:pv?a.leads/pv:null,
     cpl:a.leads?g/a.leads:null, cpmql:a.mqls?g/a.mqls:null, tx:a.leads?a.mqls/a.leads:null};
 }
 /* --------- FUNIL PROFUNDO: Check-in → Presença → Venda (aguardando dados) ---------
@@ -83,19 +84,19 @@ function salesOf(a){
 }
 function buildAgg(fL,fM,dim){
   const m={};
-  const get=k=>m[k]||(m[k]={sp:0,im:0,cl:0,leads:0,mqls:0});
-  fM.forEach(r=>{const a=get(r[dim]); a.sp+=r.sp; a.im+=r.im; a.cl+=r.cl;});
+  const get=k=>m[k]||(m[k]={sp:0,im:0,cl:0,pv:0,leads:0,mqls:0});
+  fM.forEach(r=>{const a=get(r[dim]); a.sp+=r.sp; a.im+=r.im; a.cl+=r.cl; a.pv+=r.pv;});
   fL.forEach(r=>{const a=get(r[dim]); a.leads+=1; a.mqls+=r.q;});
   return m;
 }
 function totals(fL,fM){
-  let sp=0,im=0,cl=0; fM.forEach(r=>{sp+=r.sp;im+=r.im;cl+=r.cl;});
-  return {sp, im, cl, leads:fL.length, mqls:fL.reduce((s,r)=>s+r.q,0)};
+  let sp=0,im=0,cl=0,pv=0; fM.forEach(r=>{sp+=r.sp;im+=r.im;cl+=r.cl;pv+=r.pv;});
+  return {sp, im, cl, pv, leads:fL.length, mqls:fL.reduce((s,r)=>s+r.q,0)};
 }
 /* daily aggregation for a source pair */
 function daily(fL,fM){
-  const days={}; const g=d=>days[d]||(days[d]={d, sp:0,im:0,cl:0,leads:0,mqls:0});
-  fM.forEach(r=>{if(!r.d)return; const a=g(r.d); a.sp+=r.sp; a.im+=r.im; a.cl+=r.cl;});
+  const days={}; const g=d=>days[d]||(days[d]={d, sp:0,im:0,cl:0,pv:0,leads:0,mqls:0});
+  fM.forEach(r=>{if(!r.d)return; const a=g(r.d); a.sp+=r.sp; a.im+=r.im; a.cl+=r.cl; a.pv+=r.pv;});
   fL.forEach(r=>{if(!r.d)return; const a=g(r.d); a.leads+=1; a.mqls+=r.q;});
   return Object.values(days).sort((a,b)=>a.d<b.d?-1:1);
 }
@@ -398,8 +399,9 @@ function renderGeralCore(ids){
     ['Gasto Total', brl(g), [], false, 'hl-gasto'],
     ['Impressões', intf(t.im), [['CPM',brl(dv.cpm)]]],
     ['Cliques', intf(t.cl), [['CTR',pct(dv.ctr)],['CPC',brl(dv.cpc)]]],
-    ['Leads', intf(t.leads), [['CPL',brl(dv.cpl)],['ConvForm',pct(dv.convf)]]],
-    ['MQLs (≥30k)', intf(t.mqls), [['Tx‑MQL',pct(dv.tx)],['CPMQL',brl(dv.cpmql)]], false, 'hl-mql'],
+    ['Page Views', intf(t.pv), [['CR',pct(dv.cr)],['CPV',brl(dv.cpv)]]],
+    ['Leads', intf(t.leads), [['CPL',brl(dv.cpl)],['ConvLP',pct(dv.convlp)]]],
+    ['MQLs (≥5 mil)', intf(t.mqls), [['Tx‑MQL',pct(dv.tx)],['CPMQL',brl(dv.cpmql)]], false, 'hl-mql'],
     ['Vendas', NA, [['CAC',NA]], true],
     ['Faturamento', NA, [['ROAS',NA],['Ticket',NA]], true],
   ];
@@ -677,7 +679,7 @@ function renderRelatorio(){
 const DAILY_COLS=[
   {key:'date',label:'Data',type:'date'},{key:'wd',label:'Dia',type:'dim',w:70},
   {key:'gasto',label:'Gasto',type:'brl',heat:'gasto'},{key:'cpm',label:'CPM',type:'brl'},
-  {key:'ctr',label:'CTR',type:'pct'},{key:'convf',label:'ConvForm',type:'pct'},
+  {key:'ctr',label:'CTR',type:'pct'},{key:'cr',label:'CR',type:'pct'},{key:'convlp',label:'ConvLP',type:'pct'},
   {key:'leads',label:'Leads',type:'int',heat:'leads'},{key:'cpl',label:'CPL',type:'brl'},
   {key:'tx',label:'Tx‑MQL',type:'pct'},{key:'mqls',label:'MQLs',type:'int',heat:'mqls'},{key:'cpmql',label:'CPMQL',type:'brl'},
   // Mar01: métricas de venda (aguardando aba de compradores -> "-")
@@ -686,7 +688,7 @@ const DAILY_COLS=[
 ];
 function dailyCells(x,d,isTotal){
   const s=salesOf(x);
-  return {date:isTotal?null:x.d, wd:isTotal?'':weekday(x.d), gasto:d.gasto, cpm:d.cpm, ctr:d.ctr, convf:d.convf,
+  return {date:isTotal?null:x.d, wd:isTotal?'':weekday(x.d), gasto:d.gasto, cpm:d.cpm, ctr:d.ctr, cr:d.cr, convlp:d.convlp,
     leads:x.leads, cpl:d.cpl, tx:d.tx, mqls:x.mqls, cpmql:d.cpmql,
     vendas:s.vendas, cac:s.cac, fat:s.fat, tm:s.tm, roas:s.roas};
 }
@@ -716,9 +718,9 @@ function renderMeta(){
     ['Gasto Total', brl(g), [], false, 'hl-gasto'],
     ['Impressões', intf(t.im), [['CPM',brl(dv.cpm)],['Frequência',NA]]],
     ['Cliques', intf(t.cl), [['CTR',pct(dv.ctr)],['CPC',brl(dv.cpc)]]],
-    ['Page Views', NA, [['CR',NA],['CPV',NA]], true],
-    ['Leads', intf(t.leads), [['CPL',brl(dv.cpl)],['ConvForm',pct(dv.convf)]]],
-    ['MQLs (≥30k)', intf(t.mqls), [['Tx‑MQL',pct(dv.tx)],['CPMQL',brl(dv.cpmql)]], false, 'hl-mql'],
+    ['Page Views', intf(t.pv), [['CR',pct(dv.cr)],['CPV',brl(dv.cpv)]]],
+    ['Leads', intf(t.leads), [['CPL',brl(dv.cpl)],['ConvLP',pct(dv.convlp)]]],
+    ['MQLs (≥5 mil)', intf(t.mqls), [['Tx‑MQL',pct(dv.tx)],['CPMQL',brl(dv.cpmql)]], false, 'hl-mql'],
     ['Vendas', NA, [['ConvMQL',NA],['CAC',NA]], true],
     ['Faturamento', NA, [['ROAS',NA],['Ticket',NA]], true],
   ];
@@ -753,7 +755,7 @@ function renderMeta(){
   // então todas as linhas irmãs continuam visíveis para multi-seleção (Ctrl).
   const hcols=[
     {key:'dim',label:'',type:'dim',big:true},{key:'gasto',label:'Gasto',type:'brl'},{key:'cpm',label:'CPM',type:'brl'},
-    {key:'ctr',label:'CTR',type:'pct'},{key:'convf',label:'ConvForm',type:'pct'},
+    {key:'ctr',label:'CTR',type:'pct'},{key:'cr',label:'CR',type:'pct'},{key:'convlp',label:'ConvLP',type:'pct'},
     {key:'leads',label:'Leads',type:'int'},{key:'cpl',label:'CPL',type:'brl'},
     {key:'tx',label:'Tx‑MQL',type:'pct'},{key:'mqls',label:'MQLs',type:'int'},{key:'cpmql',label:'CPMQL',type:'brl'},
     // Mar03: métricas de venda (aguardando aba de compradores -> "-")
@@ -761,9 +763,9 @@ function renderMeta(){
     {key:'fat',label:'Fat.',type:'brl'},{key:'tm',label:'TM',type:'brl'},{key:'roas',label:'ROAS',type:'num'},
   ];
   function hierRows(map){ return Object.entries(map).map(([k,a])=>{const d=derive(a),s=salesOf(a);
-    return {k, cells:{dim:k,gasto:d.gasto,cpm:d.cpm,ctr:d.ctr,convf:d.convf,leads:a.leads,cpl:d.cpl,tx:d.tx,mqls:a.mqls,cpmql:d.cpmql,
+    return {k, cells:{dim:k,gasto:d.gasto,cpm:d.cpm,ctr:d.ctr,cr:d.cr,convlp:d.convlp,leads:a.leads,cpl:d.cpl,tx:d.tx,mqls:a.mqls,cpmql:d.cpmql,
       convmql:s.convmql,vendas:s.vendas,cac:s.cac,fat:s.fat,tm:s.tm,roas:s.roas}};}); }
-  function totRowOf(tt){const d=derive(tt),s=salesOf(tt);return{dim:null,gasto:d.gasto,cpm:d.cpm,ctr:d.ctr,convf:d.convf,leads:tt.leads,cpl:d.cpl,tx:d.tx,mqls:tt.mqls,cpmql:d.cpmql,
+  function totRowOf(tt){const d=derive(tt),s=salesOf(tt);return{dim:null,gasto:d.gasto,cpm:d.cpm,ctr:d.ctr,cr:d.cr,convlp:d.convlp,leads:tt.leads,cpl:d.cpl,tx:d.tx,mqls:tt.mqls,cpmql:d.cpmql,
     convmql:s.convmql,vendas:s.vendas,cac:s.cac,fat:s.fat,tm:s.tm,roas:s.roas};}
   const Sc=metaScope('C'), Sa=metaScope('A'), Sd=metaScope('D');
   const aggC=buildAgg(Sc.fL,Sc.fM,'camp'), aggA=buildAgg(Sa.fL,Sa.fM,'adset'), aggD=buildAgg(Sd.fL,Sd.fM,'ad');
@@ -894,7 +896,7 @@ function setPage(p){ STATE.page=p;
 }
 function renderAll(){ if(STATE.page==='meta') renderMeta(); else if(STATE.page==='rel') renderRelatorio(); else renderGeral(); }
 
-function applyTheme(){ const t=localStorage.getItem('dm_theme'); if(t==='dark') document.documentElement.setAttribute('data-theme','dark'); else document.documentElement.removeAttribute('data-theme'); }
+function applyTheme(){ const t=localStorage.getItem('dm_theme'); if(t==='light') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme','dark'); }
 applyTheme();
 document.getElementById('themeBtn').addEventListener('click',()=>{ const dark=document.documentElement.getAttribute('data-theme')==='dark'; localStorage.setItem('dm_theme',dark?'light':'dark'); applyTheme(); renderAll(); });
 
