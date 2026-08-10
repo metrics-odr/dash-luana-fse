@@ -1,0 +1,15 @@
+{
+  "generated_at": "",
+  "fonte": "Insights de Tráfego gerados a partir dos dados do funil (mídia paga × Leads).",
+  "periodos": {
+    "hoje":    {"html": ""},
+    "ontem":   {"html": ""},
+    "3d":      {"html": ""},
+    "7d":      {"html": ""},
+    "14d":     {"html": ""},
+    "30d":     {"html": ""},
+    "mes":     {"html": ""},
+    "mespass": {"html": ""},
+    "todo":    {"html": ""}
+  }
+}
