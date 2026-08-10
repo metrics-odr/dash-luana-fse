@@ -35,7 +35,7 @@ GID_META = "0"
 EXPORT_URL = "https://docs.google.com/spreadsheets/d/{sid}/export?format=csv&gid={gid}"
 
 BRT = timezone(timedelta(hours=-3))   # horario de Brasilia (exibicao)
-TAX_FACTOR = 1.0                      # sem imposto configurado para este cliente
+TAX_FACTOR = 1.13806                  # imposto da conta de mídia Meta (+13,806%) — toggle "Imposto Meta" no topo, ativo por padrão
 
 # --------------------------------------------------------------------------- #
 # Regras da aba Relatório (Top/Piores anúncios)

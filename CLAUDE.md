@@ -78,9 +78,12 @@ planilha já calcula. Lógica em `build.py` → `is_qualified` (limiar
 em `renderGeralCore`).
 
 ### Imposto da mídia paga
-Não há imposto/taxa configurado para este cliente — `TAX_FACTOR=1.0` em
-`build.py`. O toggle "Imposto Meta ×1,13806" continua visível no template mas
-sem efeito (×1.0), por pedido do cliente.
+Imposto padrão da conta de mídia Meta: `TAX_FACTOR=1.13806` (+13,806%) em
+`build.py`. O toggle "Imposto Meta" fica **ativo por padrão** (`STATE.tax=true`
+em `app.js`) e aplica o fator em todo o gasto/derivados (CPL, CPMQL, CAC etc.);
+o número do multiplicador fica oculto no label (só "Imposto Meta"), mas o
+cálculo real usa o fator normalmente — desativar o toggle volta ao gasto sem
+imposto.
 
 ### Convenções de campanha (do cliente)
 Sigla do funil: **FSE** (Funil de Sessão Estratégica). `Campaign Name`/`utm_campaign`
