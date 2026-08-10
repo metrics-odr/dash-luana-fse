@@ -23,37 +23,40 @@ automação própria — GitHub Action + qualquer API de IA, rodando antes do
 
 ## Contexto do funil
 
-**Funil de Sessão Estratégica (FSE)** — Luana Ferreira, Negócio com Alma. Anúncios
-no Meta Ads levam a um formulário de captura (typeform) que qualifica o lead pela
-faixa de faturamento declarada e o direciona para agendar uma Sessão Diagnóstica
-(sessão estratégica) com a equipe comercial. Fluxo genérico (ajuste as etapas
-quando a lista do comercial/evento chegar):
+**Funil de Sessão Estratégica (FSE)** — Luana Ferreira, Negócio com Alma. É um
+funil de **venda 1:1 por reunião** (não evento/lançamento): o anúncio no Meta
+Ads leva a uma página de formulário (typeform) que faz perguntas qualificatórias
+— a principal é a faixa de faturamento declarada — e, se qualificado, o lead
+**agenda uma reunião** (Sessão Estratégica/Diagnóstica) com a equipe comercial,
+onde a oferta é apresentada e a venda acontece.
 
 ```
-Impressões → Cliques/abertura do formulário → Leads → MQLs → Check-ins → Presenças → Vendas → Faturamento
+Impressões → Cliques/abertura do formulário → Leads → MQLs (QLF) → Agendamentos → Reuniões Realizadas → Vendas → Faturamento
 ```
 
-- **MQL** = faturamento médio mensal declarado pelo lead **≥ R$ 5.000** (ver
+- **MQL / QLF** = faturamento médio mensal declarado pelo lead **≥ R$ 5.000** (ver
   `build.py` → `is_qualified`).
-- **Check-in** = vaga confirmada pelo comercial **antes** do evento (se aplicável).
-- **Presença** = comparecimento efetivo, validado no local (se aplicável).
+- **Agendamento** = o lead qualificado marcou horário de reunião com o comercial.
+- **Reunião Realizada** = a reunião de fato aconteceu (o lead compareceu). O
+  inverso disso é o **No‑Show** (agendou e não compareceu) — a métrica de alerta
+  mais importante entre Agendamento e Venda.
 
 > **Estado atual dos dados:** enquanto só houver mídia paga × Leads, o funil
-> vai até **MQL**. As etapas seguintes (Check-ins, Presenças, Vendas,
+> vai até **MQL**. As etapas seguintes (Agendamentos, Reuniões Realizadas, Vendas,
 > Faturamento) e as métricas derivadas aparecem como “-” até chegar a lista do
-> comercial/evento/vendas. Quando os campos `checkins`/`presencas`/`vendas`/
+> comercial/vendas. Quando os campos `agendamentos`/`reunioes`/`vendas`/
 > `fat` forem somados por linha em `buildAgg/daily/totals` (`build/app.js`),
 > **toda a UI acende sozinha** (funil, tabelas, Top/Piores).
 
 ## Fórmulas fundamentais
 
 - **Tx MQL** = MQLs ÷ Leads · **CPMQL** = Investimento ÷ MQLs
-- **Tx Check-in** = Check-ins ÷ MQLs · **CPCIN** = Investimento ÷ Check-ins
-- **Tx Presença** = Presenças ÷ Check-ins · **CPP** = Investimento ÷ Presenças
-- **Tx Venda** = Vendas ÷ Presenças · **CAC** = Investimento ÷ Vendas
+- **Tx Agendamento** = Agendamentos ÷ MQLs · **CPAG** = Investimento ÷ Agendamentos
+- **No‑Show** = 1 − (Reuniões Realizadas ÷ Agendamentos) · **CPRR** = Investimento ÷ Reuniões Realizadas
+- **Tx Venda** = Vendas ÷ Reuniões Realizadas · **CAC** = Investimento ÷ Vendas
 - **ROAS** = Faturamento ÷ Investimento · **Ticket** = Faturamento ÷ Vendas
-- Conversões acumuladas úteis: Lead→Check-in, Lead→Presença, Lead→Venda,
-  MQL→Presença, MQL→Venda, Check-in→Venda.
+- Conversões acumuladas úteis: Lead→Agendamento, Lead→Reunião Realizada, Lead→Venda,
+  MQL→Reunião Realizada, MQL→Venda, Agendamento→Venda.
 
 Regra de ouro: **acumulativas somam** (impressões, cliques, leads, MQLs, gasto);
 **derivadas recalculam dos totais** (nunca some percentuais).
@@ -66,44 +69,48 @@ anterior e a posterior, o histórico, o **volume da amostra** e o **tempo de
 maturação**. O objetivo não é o menor CPL nem o maior volume de leads — é gerar
 leads qualificados que avancem no funil até a venda.
 
-**CPMQL, CPCIN, CPP, CAC e ROAS são resultados acumulados (efeito), não causas.**
+**CPMQL, CPAG, CPRR, CAC e ROAS são resultados acumulados (efeito), não causas.**
 Ao ver um deles ruim, aponte a **etapa** que perdeu eficiência — não recomende
-"reduzir o CAC/CPP/ROAS" de forma abstrata.
+"reduzir o CAC/CPRR/ROAS" de forma abstrata.
 
 ### Leitura por etapa (resumo)
 - **CTR** (Cliques/Impressões): interesse do criativo. CTR baixo **pode ser bom**
-  se qualifica melhor (CPMQL/CPP/CAC saudáveis). Só é problema junto de custo ruim.
-- **CPL**: custo do cadastro. CPL alto pode ser saudável se gera mais MQL/presença.
+  se qualifica melhor (CPMQL/CPRR/CAC saudáveis). Só é problema junto de custo ruim.
+- **CPL**: custo do cadastro. CPL alto pode ser saudável se gera mais MQL/reunião.
   CPL baixo pode ser ruim se atrai gente fora do ICP.
-- **Tx MQL / CPMQL**: mídia+criativo+form atraindo o perfil certo. Tx alta com
-  pouco volume pode ser segmentação estreita ou critério permissivo — o MQL só
-  vale se avançar para check-in, presença e venda.
-- **Tx Check-in / CPCIN**: qualidade do MQL + atratividade da oferta + eficiência
-  do comercial (tempo até 1º contato, taxa de contato, tentativas, script).
-- **Tx Presença / CPP**: compromisso após a confirmação (reconfirmação, lembretes,
-  logística, valor percebido). **CPP é uma das principais métricas operacionais.**
-- **Tx Venda / CAC / Ticket / ROAS**: qualidade real da oferta + pitch +
-  follow-up + maturação (venda high-ticket costuma fechar dias depois).
+- **Tx MQL / CPMQL**: mídia+criativo+form atraindo o perfil certo (passou pelas
+  perguntas qualificatórias de renda). Tx alta com pouco volume pode ser
+  segmentação estreita ou critério permissivo — o MQL só vale se avançar para
+  agendamento, reunião realizada e venda.
+- **Tx Agendamento / CPAG**: qualidade do MQL + atratividade da oferta de
+  reunião + eficiência do comercial (tempo até 1º contato, taxa de contato,
+  tentativas, script de agendamento).
+- **No‑Show / CPRR**: compromisso do lead após agendar (lembrete, remarcação,
+  horário, valor percebido da reunião). **No‑Show é uma das principais métricas
+  operacionais** — reunião marcada e não realizada é dinheiro parado no meio do funil.
+- **Tx Venda / CAC / Ticket / ROAS**: qualidade real da oferta + pitch da reunião +
+  follow-up + maturação (venda high-ticket costuma fechar dias depois da reunião).
 
 ### Heurísticas obrigatórias
-- CTR baixo + CPMQL/CPP/CAC saudáveis → o anúncio qualifica melhor (não mexer).
+- CTR baixo + CPMQL/CPRR/CAC saudáveis → o anúncio qualifica melhor (não mexer).
 - CPL baixo + Tx MQL baixa → mídia atraindo fora do ICP.
-- Tx MQL boa + Tx Check-in baixa → investigar **comercial**/disponibilidade/script,
-  não o tráfego automaticamente.
-- Tx Check-in boa + Tx Presença baixa → confirmação/lembretes/logística.
-- Tx Presença boa + Tx Venda baixa → oferta/pitch/follow-up
-  (sala cheia ≠ sala qualificada).
-- CPMQL bom + CPCIN ruim → perda entre qualificação e confirmação.
-- CPCIN bom + CPP ruim → perda entre confirmação e comparecimento.
-- CPP bom + CAC ruim → perda entre evento e venda.
-- Evento/lançamento recente + ROAS baixo → verificar **maturação** antes de julgar.
+- Tx MQL boa + Tx Agendamento baixa → investigar **comercial**/disponibilidade/script
+  de agendamento, não o tráfego automaticamente.
+- Tx Agendamento boa + No‑Show alto → lembrete/confirmação/horário/remarcação —
+  o problema é entre marcar e comparecer, não a qualificação do lead.
+- Reunião Realizada boa (No‑Show baixo) + Tx Venda baixa → oferta/pitch/follow-up
+  da reunião (agenda cheia ≠ agenda qualificada).
+- CPMQL bom + CPAG ruim → perda entre qualificação e agendamento.
+- CPAG bom + No‑Show alto (CPRR ruim) → perda entre agendamento e comparecimento.
+- CPRR bom + CAC ruim → perda entre reunião realizada e venda.
+- Reunião/lançamento recente + ROAS baixo → verificar **maturação** antes de julgar.
 - Só uma campanha piorou → investigar a própria (segmentação/criativo), não geral.
 
 ## Top Anúncios e Piores Anúncios (o que a tabela já faz)
 
 A aba calcula sozinha, por anúncio (com gasto no período):
-- **Top**: ranqueado pelo **resultado mais profundo disponível** (Venda → Presença →
-  Check-in → MQL), maior volume + menor custo, **amostra relevante primeiro**.
+- **Top**: ranqueado pelo **resultado mais profundo disponível** (Venda → Reunião
+  Realizada → Agendamento → MQL), maior volume + menor custo, **amostra relevante primeiro**.
   Anúncio promissor **sem amostra suficiente** entra marcado **"Em observação"** —
   nunca é "vencedor" só por 1 resultado com pouco gasto.
 - **Piores**: só anúncios com **investimento relevante** e resultado profundo
@@ -142,11 +149,11 @@ O texto deve **explicar** o ranking (por quê), não repeti-lo.
      acima do **teto** por **N dias** consecutivos (N do painel; padrão 5). **Cortar
      exige meta/teto definido** — se a meta não estiver preenchida, não classifique
      nada como Cortar; diga que depende de definir a meta.
-4. **Gargalo de dado — prioridade alta** — sempre que uma etapa (check‑in, presença,
-   venda, faturamento) **não tiver fonte conectada**, isso é um item de ação próprio,
-   **separado** dos gargalos de campanha, com prioridade alta (otimizar sem essa
-   etapa é decisão às cegas). Enquanto o funil só for até MQL, este bloco existe em
-   todos os períodos.
+4. **Gargalo de dado — prioridade alta** — sempre que uma etapa (agendamento,
+   reunião realizada, venda, faturamento) **não tiver fonte conectada**, isso é
+   um item de ação próprio, **separado** dos gargalos de campanha, com
+   prioridade alta (otimizar sem essa etapa é decisão às cegas). Enquanto o
+   funil só for até MQL, este bloco existe em todos os períodos.
 5. **Ações recomendadas** — com **números concretos** (%, R$, dias). Para escala,
    recomende o **tamanho do incremento** (ex.: +10–20% a cada 3–4 dias) e **alerte
    sobre resetar o aprendizado** se o salto for maior. Cada ação diz: o que fazer,
