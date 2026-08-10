@@ -434,7 +434,7 @@ function renderGeralCore(ids){
   hbar(ids.source, Object.entries(bySrc).map(([label,leads])=>({label,leads})), x=>x.leads, ()=>cvar('--chart-leads'));
   // por faixa
   const byB={}; fL.forEach(l=>{byB[l.bucket]=byB[l.bucket]||{label:l.bucket,leads:0,q:l.q}; byB[l.bucket].leads++;});
-  const order=['Menos de 5 mil','Entre 5 a 10 mil','Entre 10 a 20 mil','Entre 20 a 30 mil','Entre 30 a 50 mil','Entre 50 a 100 mil','Mais de 100 mil','Sem resposta'];
+  const order=['Menos de r$1.212','Menos de r$1.212,00','Entre r$1.212 a r$2.500','Entre r$1.212,00 a r$2.500','Entre r$2.500 a r$5.000','Entre r$5.000 a r$8.000','Entre r$9.000 a r$ 20.000','Entre r$21.000 a r$50.000','Mais de r$50.000','Sem resposta'];
   const bArr=Object.values(byB).sort((a,b)=>order.indexOf(a.label)-order.indexOf(b.label));
   hbar(ids.bucket, bArr, x=>x.leads, x=>x.q?cvar('--bar-q'):cvar('--bar-noq'));
   // por plataforma

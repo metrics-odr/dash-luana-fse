@@ -1,11 +1,12 @@
-# Dashboard de Captura de Leads · <<PREENCHER: nome do cliente>>
+# Dashboard de Captura de Leads · Luana Ferreira
 
-Dashboard **100% na nuvem** que cruza a lista de **Leads** com o investimento de
-mídia paga (**<<PREENCHER: ex. Meta Ads>>**), calcula os **Leads Qualificados** e
-é publicada no **GitHub Pages**. Reconstrói sozinha a cada ~30 min, disparada
-pelo **cron-job.org** — sem depender de nenhum PC ligado.
+Dashboard **100% na nuvem** que cruza a lista de **Leads** (Funil de Sessão
+Estratégica — Negócio com Alma) com o investimento de mídia paga (**Meta Ads**),
+calcula os **Leads Qualificados** e é publicada no **GitHub Pages**. Reconstrói
+sozinha a cada ~30 min, disparada pelo **cron-job.org** — sem depender de
+nenhum PC ligado.
 
-**URL pública:** <<PREENCHER: https://<owner>.github.io/<repo>/>>
+**URL pública:** https://metrics-odr.github.io/dash-luana-fse/
 
 ---
 
@@ -21,18 +22,18 @@ pelo **cron-job.org** — sem depender de nenhum PC ligado.
 
 ## Critério de Lead Qualificado (MQL)
 
-<<PREENCHER: descreva a regra de qualificação do cliente (ex. "faturamento médio
-mensal ≥ 30 mil, coluna N da lista de leads")>>. Lógica em `build.py` → `is_qualified`.
+Faturamento médio mensal declarado pelo lead **≥ R$ 5.000**. Lógica em `build.py` →
+`is_qualified`.
 
 ## Fontes de dados (somente leitura)
 
-Planilha central `<<PREENCHER: nome da planilha>>`
-(`<<PREENCHER: ID da planilha (Google Sheets)>>`):
+Planilha central "NCA | Planilha Central"
+(`1nMqXUO8HB8XK8pUHn9edPsfYd4U5RPyeGpNVVrozkc4`):
 
 | Aba | gid | Uso |
 |-----|-----|-----|
-| Leads | `<<PREENCHER: gid>>` | leads reais + coluna de qualificação |
-| <<PREENCHER: ex. Meta Ads>> | `<<PREENCHER: gid>>` | gasto, impressões, cliques |
+| Leads | `249947118` | leads reais + coluna de qualificação |
+| Meta Ads | `0` | gasto, impressões, cliques |
 
 O build lê essas abas via **export CSV público** (`.../export?format=csv&gid=...`).
 **Nada é escrito de volta** nas planilhas.

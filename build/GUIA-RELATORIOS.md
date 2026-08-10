@@ -23,16 +23,18 @@ automação própria — GitHub Action + qualquer API de IA, rodando antes do
 
 ## Contexto do funil
 
-<<PREENCHER: descreva em 1-2 parágrafos o funil e o produto/oferta deste
-cliente (ex.: evento presencial, lançamento, infoproduto, SaaS...) e o que
-qualifica um lead como MQL>>. Fluxo genérico (ajuste as etapas ao cliente):
+**Funil de Sessão Estratégica (FSE)** — Luana Ferreira, Negócio com Alma. Anúncios
+no Meta Ads levam a um formulário de captura (typeform) que qualifica o lead pela
+faixa de faturamento declarada e o direciona para agendar uma Sessão Diagnóstica
+(sessão estratégica) com a equipe comercial. Fluxo genérico (ajuste as etapas
+quando a lista do comercial/evento chegar):
 
 ```
 Impressões → Cliques/abertura do formulário → Leads → MQLs → Check-ins → Presenças → Vendas → Faturamento
 ```
 
-- **MQL** = <<PREENCHER: critério de qualificação do cliente>> (ver `build.py`
-  → `is_qualified`).
+- **MQL** = faturamento médio mensal declarado pelo lead **≥ R$ 5.000** (ver
+  `build.py` → `is_qualified`).
 - **Check-in** = vaga confirmada pelo comercial **antes** do evento (se aplicável).
 - **Presença** = comparecimento efetivo, validado no local (se aplicável).
 

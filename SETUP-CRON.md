@@ -10,7 +10,7 @@ Na **primeira execução** o próprio workflow **habilita o GitHub Pages**
 automaticamente (`actions/configure-pages` com `enablement: true`). Depois de rodar
 uma vez, a página fica no ar em:
 
-**<<PREENCHER: https://<owner>.github.io/<repo>/>>**
+**https://metrics-odr.github.io/dash-luana-fse/**
 
 Se preferir disparar a primeira execução na mão: aba **Actions** → *Build & Deploy
 Dashboard* → **Run workflow**.
@@ -18,7 +18,7 @@ Dashboard* → **Run workflow**.
 ## Passo 2 — Token do GitHub (fine-grained)
 
 GitHub → *Settings* → *Developer settings* → **Fine-grained tokens** → *Generate*:
-- Repository access: **Only select repositories → `<<PREENCHER: nome do repo>>`**
+- Repository access: **Only select repositories → `dash-luana-fse`**
 - Permissions → **Actions: Read and write**
 - (opcional) validade longa
 
@@ -32,7 +32,7 @@ Crie um job e preencha **exatamente** (um valor por vez):
 
 ### URL
 ```
-https://api.github.com/repos/<<PREENCHER: owner>>/<<PREENCHER: repo>>/actions/workflows/deploy.yml/dispatches
+https://api.github.com/repos/metrics-odr/dash-luana-fse/actions/workflows/deploy.yml/dispatches
 ```
 
 ### Método (Request method)
@@ -50,7 +50,7 @@ A cada 30 minutos  (Every 30 minutes)
 Accept: application/vnd.github+json
 ```
 ```
-Authorization: Bearer <<PREENCHER: SEU_TOKEN_AQUI>>
+Authorization: Bearer TOKEN_AQUI
 ```
 ```
 X-GitHub-Api-Version: 2022-11-28

@@ -11,8 +11,7 @@
 2. `build/app.js`: revisar os rótulos "MQLs (≥30k)" e a lista `order` de faixas
    de faturamento — o critério de `build.py` não propaga sozinho para esses
    textos fixos da UI.
-3. `build/template.html`: substituir os `<<PREENCHER: nome do cliente>>` (title
-   e logo).
+3. `build/template.html`: substituir o nome do cliente no `<title>` e no logo.
 4. `README.md` / `CLAUDE.md` / `SETUP-CRON.md`: owner/repo do GitHub, URL do
    GitHub Pages, nome do cliente.
 5. GitHub Pages + Actions: levar `build/` + `.github/workflows/deploy.yml`

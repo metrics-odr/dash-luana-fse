@@ -19,8 +19,8 @@ Marque cada item ao configurar este template para um cliente novo. Ordem sugerid
    sozinho para textos fixos da UI): revise os rótulos hardcoded "MQLs (≥30k)"
    (2 ocorrências) e a lista `order` de faixas de faturamento (função
    `renderGeralCore`) — ajuste ao critério real do cliente novo.
-3. **Branding**: `build/template.html` — troque os dois
-   `<<PREENCHER: nome do cliente>>` (`<title>` e logo da sidebar).
+3. **Branding**: `build/template.html` — troque o nome do cliente no `<title>`
+   e no logo da sidebar (2 ocorrências).
 4. **Nome do projeto/URL** em `README.md`, `CLAUDE.md` (esta seção "O que é",
    abaixo) e `SETUP-CRON.md` — owner/repo do GitHub e URL do GitHub Pages.
 5. **GitHub Pages + Actions**:
@@ -55,33 +55,41 @@ puro + Chart.js via CDN) publicado no **GitHub Pages**, que cruza a lista de
 **Leads** com o gerenciador de mídia paga e se atualiza sozinho a cada ~30 min
 (build 100% na nuvem via GitHub Actions, disparado externamente pelo cron-job.org).
 
-- **URL pública:** `<<PREENCHER: https://<owner>.github.io/<repo>/>>`
+- **URL pública:** `https://metrics-odr.github.io/dash-luana-fse/`
 - **Somente leitura** das planilhas. Nunca escrever de volta.
 
 ## Fontes de dados (Google Sheets)
 
-Spreadsheet ID: `<<PREENCHER: ID da planilha>>` (público — leitura via export CSV).
+Spreadsheet ID: `1nMqXUO8HB8XK8pUHn9edPsfYd4U5RPyeGpNVVrozkc4` (público — leitura via export CSV).
 
 | Aba | gid | Colunas usadas |
 |-----|-----|----------------|
-| **Leads** | `<<PREENCHER: gid>>` | `<<PREENCHER: mapeamento de colunas — id/created_time/ad_name/adset_name/campaign_name/is_organic/platform/profissão/critério de qualificação/nome/email/phone>>` |
-| **<<PREENCHER: nome da aba de mídia, ex. Meta Ads>>** | `<<PREENCHER: gid>>` | `<<PREENCHER: mapeamento de colunas — Day/Campaign Name/Ad Set Name/Ad Name/Amount Spent/Impressions/Link Clicks/Leads>>` |
+| **Leads** (formulário/typeform) | `249947118` | `Data Ajustada`(created) · `utm_content`(ad_name) · `utm_medium`(adset_name) · `utm_campaign`(campaign) · `utm_source`(platform, sem coluna de orgânico dedicada) · `Qual a sua profissão e atividade?`(profession) · `Qual é a sua média de faturamento mensal...`(faturamento/MQL) · `Nome completo`(name) · `E-mail`(email) · `WhatsApp`(phone) |
+| **Meta Ads** | `0` | `Day` · `Campaign Name` · `Ad Set Name` · `Ad Name` · `Amount Spent` · `Impressions` · `Link Clicks` · `Leads` · `Creative Instagram Permalink`(link do criativo) |
 
 URL de export CSV: `https://docs.google.com/spreadsheets/d/<ID>/export?format=csv&gid=<GID>`
 
 ### Regra de Lead Qualificado (MQL)
-`<<PREENCHER: descreva a regra de qualificação do cliente>>`. (Lógica em `build.py`
-→ `is_qualified`; rótulos/ordem de faixas espelhados em `app.js` — ver checklist.)
+Faturamento médio mensal **≥ R$ 5.000** (coluna "Qual é a sua média de faturamento
+mensal..." da aba Leads, faixas no formato "Entre R$X e R$Y" / "Menos de R$X" /
+"Mais de R$X"). Confirmado batendo 1:1 com a coluna `MQL` (QLF/DSQ) que a própria
+planilha já calcula. Lógica em `build.py` → `is_qualified` (limiar
+`MQL_FATURAMENTO_MIN`); rótulos/ordem de faixas espelhados em `app.js` (`order`
+em `renderGeralCore`).
 
 ### Imposto da mídia paga
-`<<PREENCHER: se houver imposto/taxa sobre custos da conta de mídia, descreva o
-toggle e o fator (ex. ×1,13806 = +13,806%). Se não houver, deixe TAX_FACTOR=1.0
-em build.py e remova/ignore o toggle no template.>>`
-Constante `TAX_FACTOR` em `build.py` e `TAX` no template.
+Não há imposto/taxa configurado para este cliente — `TAX_FACTOR=1.0` em
+`build.py`. O toggle "Imposto Meta ×1,13806" continua visível no template mas
+sem efeito (×1.0), por pedido do cliente.
 
 ### Convenções de campanha (do cliente)
-`<<PREENCHER: convenções de nomenclatura de campanha do cliente, ex. prefixos por
-objetivo/funil, e o mapeamento de UTM (Campaign Name = utm_campaign, etc.)>>`
+Sigla do funil: **FSE** (Funil de Sessão Estratégica). `Campaign Name`/`utm_campaign`
+segue o padrão `FSE | <etapa> | <público> | <objetivo> | <estratégia> | <data> | <teste>`
+(ex. `FSE | E2-CAP | P1-QUENTE | CONV | ABO | 2026-08-05 | Teste Publicos`).
+`utm_content` = nome do anúncio (bate exatamente com `Ad Name` do Meta Ads).
+`utm_campaign` = `Campaign Name` do Meta Ads. `utm_medium` é usado como conjunto
+(adset), mas a nomenclatura do cliente não bate 100% com `Ad Set Name` do Meta —
+o cruzamento por Conjunto pode ficar levemente impreciso até o cliente padronizar.
 
 ## Arquitetura / arquivos
 
@@ -214,4 +222,4 @@ MQLs (verde)** — cores em `--heat-gasto/leads/mqls`. As demais colunas ficam s
    gerar um novo** (fine‑grained, só Actions: read/write neste repo).
 
 ## Branch / git
-- `<<PREENCHER: branch de desenvolvimento deste cliente>>`; manter sincronizada com `main`.
+- `claude/dashboard-traffic-control-ebuvjv`; manter sincronizada com `main`.

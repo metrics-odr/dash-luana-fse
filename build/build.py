@@ -3,13 +3,11 @@
 """
 Gera a dashboard estatica (index.html) a partir de duas abas da planilha central:
 
-  - "Leads"    (<<PREENCHER: gid da aba de Leads>>): leads reais + coluna de
-    faturamento/critério => qualificacao
-  - "<<PREENCHER: nome da aba de mídia paga, ex. Meta Ads>>"
-    (<<PREENCHER: gid da aba de mídia>>): investimento/impressoes/cliques do gerenciador
+  - "Leads" (gid 249947118): leads reais + coluna de faturamento => qualificacao
+  - "Meta Ads" (gid 0): investimento/impressoes/cliques do gerenciador
 
-Criterio de Lead Qualificado (MQL): <<PREENCHER: regra de qualificação do cliente,
-ex. "faturamento medio mensal >= 30 mil (coluna N)">>.
+Criterio de Lead Qualificado (MQL): faturamento medio mensal >= R$ 5.000
+(coluna "Qual e a sua media de faturamento mensal...").
 
 Este script apenas LE as planilhas (export CSV publico) e emite os REGISTROS BRUTOS
 (leads[] e meta[]) dentro do HTML. Todos os filtros, agregacoes, KPIs, tabelas e
@@ -31,13 +29,13 @@ import unicodedata
 import urllib.request
 from datetime import datetime, timezone, timedelta
 
-SPREADSHEET_ID = "<<PREENCHER: ID da planilha (Google Sheets)>>"
-GID_LEADS = "<<PREENCHER: gid da aba de Leads>>"
-GID_META = "<<PREENCHER: gid da aba de mídia paga (Meta Ads/Google Ads/etc.)>>"
+SPREADSHEET_ID = "1nMqXUO8HB8XK8pUHn9edPsfYd4U5RPyeGpNVVrozkc4"
+GID_LEADS = "249947118"
+GID_META = "0"
 EXPORT_URL = "https://docs.google.com/spreadsheets/d/{sid}/export?format=csv&gid={gid}"
 
 BRT = timezone(timedelta(hours=-3))   # horario de Brasilia (exibicao)
-TAX_FACTOR = 1.0                      # <<PREENCHER: imposto da conta de mídia (ex. 1.13806 = +13,806%) — toggle no front
+TAX_FACTOR = 1.0                      # sem imposto configurado para este cliente
 
 # --------------------------------------------------------------------------- #
 # Regras da aba Relatório (Top/Piores anúncios)
@@ -45,8 +43,8 @@ TAX_FACTOR = 1.0                      # <<PREENCHER: imposto da conta de mídia 
 # Amostra mínima para julgar um anúncio como "vencedor" ou "ruim". Abaixo disso
 # ele entra como "Em observação" (dado insuficiente) — nunca é classificado só
 # porque teve 1 resultado com pouco investimento. Ajuste conforme o ticket/CAC.
-SAMPLE_MIN_SPEND = 100.0   # <<PREENCHER: gasto mínimo (R$) para amostra relevante>>
-SAMPLE_MIN_MQLS = 3        # <<PREENCHER: MQLs mínimos para julgar qualidade profunda>>
+SAMPLE_MIN_SPEND = 100.0   # gasto mínimo (R$) para amostra relevante
+SAMPLE_MIN_MQLS = 3        # MQLs mínimos para julgar qualidade profunda
 TOP_ADS_N = 10             # nº de linhas em Top / Piores anúncios
 
 # Metas & parâmetros da conta (DEFAULTS do painel editável da aba Relatório).
@@ -129,26 +127,38 @@ def is_test_lead(rowtext: str) -> bool:
     return "<test lead" in rowtext.lower()
 
 
-_NUM_RE = re.compile(r"\d+")
+_MONEY_RE = re.compile(r"\d[\d.]*(?:,\d+)?")
+MQL_FATURAMENTO_MIN = 5000.0  # criterio do cliente: faturar acima de 5 mil reais
+
+
+def _money_values(s: str) -> list[float]:
+    out = []
+    for tok in _MONEY_RE.findall(s):
+        t = tok.replace(".", "").replace(",", ".")
+        try:
+            out.append(float(t))
+        except ValueError:
+            pass
+    return out
 
 
 def is_qualified(bucket: str | None) -> bool:
-    """MQL — <<PREENCHER: descreva aqui em 1 linha a regra de qualificação do
-    cliente (ex. "faturamento medio mensal >= 30 mil"); ajuste a lógica abaixo
-    se o critério não for uma faixa numérica de faturamento."""
+    """MQL — faturamento medio mensal (coluna "Qual e a sua media de faturamento
+    mensal...") >= R$ 5.000. Faixas no formato "Entre R$X e R$Y" / "Menos de R$X"
+    / "Mais de R$X"."""
     s = norm(bucket)
     if not s or "test lead" in s:
         return False
-    nums = [int(n) for n in _NUM_RE.findall(s)]
+    nums = _money_values(s)
     if not nums:
         return False
     if "menos" in s or "ate " in s or "abaixo" in s:
         return False
     if "entre" in s:
-        return min(nums) >= 30  # <<PREENCHER: limiar numérico do critério de qualificação>>
+        return min(nums) >= MQL_FATURAMENTO_MIN
     if any(k in s for k in ("mais", "acima", "superior", "maior")):
-        return max(nums) >= 30  # <<PREENCHER: limiar numérico do critério de qualificação>>
-    return max(nums) >= 30  # <<PREENCHER: limiar numérico do critério de qualificação>>
+        return max(nums) >= MQL_FATURAMENTO_MIN
+    return max(nums) >= MQL_FATURAMENTO_MIN
 
 
 def pretty_bucket(bucket: str) -> str:
@@ -215,15 +225,19 @@ def process(leads_rows, meta_rows):
     lheader = leads_rows[0] if leads_rows else []
     lidx = header_index(
         lheader,
-        # <<PREENCHER: confira/ajuste os aliases e o fallback posicional (índice de
-        # coluna) para o layout real da aba "Leads" do cliente novo>>
-        {"created": ["created_time", "data", "created"], "ad_name": ["ad_name"],
-         "adset_name": ["adset_name"], "campaign": ["campaign_name"], "is_organic": ["is_organic"],
-         "platform": ["platform"], "profession": ["qual_sua_profissao", "profiss"],
-         "faturamento": ["qual_seu_faturamento", "faturamento"], "name": ["full_name", "nome"],
-         "email": ["email"], "phone": ["phone_number", "phone", "telefone"]},
-        {"created": 1, "ad_name": 3, "adset_name": 5, "campaign": 7, "is_organic": 10, "platform": 11,
-         "profession": 12, "faturamento": 13, "name": 14, "email": 15, "phone": 16},
+        # Aba "Leads" (formulário/typeform): sem coluna de plataforma/orgânico
+        # dedicada — usamos utm_source como platform e is_organic fica sem
+        # alias (todos os leads atuais são via Meta Ads pago).
+        {"created": ["data ajustada", "created_time", "data", "created"],
+         "ad_name": ["utm_content", "ad_name"],
+         "adset_name": ["utm_medium", "adset_name"], "campaign": ["utm_campaign", "campaign_name"],
+         "is_organic": ["is_organic"],
+         "platform": ["utm_source", "platform"], "profession": ["profissao e atividade", "qual_sua_profissao", "profiss"],
+         "faturamento": ["media de faturamento mensal", "qual_seu_faturamento", "faturamento"],
+         "name": ["nome completo", "full_name", "nome"],
+         "email": ["e-mail", "email"], "phone": ["whatsapp", "phone_number", "phone", "telefone"]},
+        {"created": 31, "ad_name": 14, "adset_name": 12, "campaign": 13, "is_organic": None, "platform": 11,
+         "profession": 26, "faturamento": 29, "name": 7, "email": 8, "phone": 9},
     )
 
     leads = []
