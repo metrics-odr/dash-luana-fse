@@ -52,6 +52,7 @@ Impressões → Cliques/abertura do formulário → Leads → MQLs (QLF) → Age
 
 - **Tx MQL** = MQLs ÷ Leads · **CPMQL** = Investimento ÷ MQLs
 - **Tx Agendamento** = Agendamentos ÷ MQLs · **CPAG** = Investimento ÷ Agendamentos
+- **Tx NS** = No-Shows÷ Agendamentos · **CPNS** = Investimento ÷ No-Shows
 - **No‑Show** = 1 − (Reuniões Realizadas ÷ Agendamentos) · **CPRR** = Investimento ÷ Reuniões Realizadas
 - **Tx Venda** = Vendas ÷ Reuniões Realizadas · **CAC** = Investimento ÷ Vendas
 - **ROAS** = Faturamento ÷ Investimento · **Ticket** = Faturamento ÷ Vendas
