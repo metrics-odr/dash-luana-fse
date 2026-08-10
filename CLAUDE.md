@@ -120,11 +120,11 @@ e, abaixo, acrescenta 3 blocos novos + um painel de metas editável:
   Editar recolore **CPMQL/CAC** nas tabelas de anúncio (verde ≤ meta · amarelo até +30% ·
   vermelho acima) e ajusta o badge Em observação/Avaliável (usa o volume mínimo), **tudo ao vivo**
   (`METAS` + `renderRelAds()` em `app.js`, sem re-render dos gráficos).
-- **Top Anúncios** e **Piores Anúncios** — 22 colunas + coluna **Status** (Anúncio · Status ·
-  Campanha · Conjunto · Gasto · Impr · CPM · CTR · Leads · CPL · MQLs · Tx‑MQL · CPMQL · Check‑ins ·
-  Tx‑Check‑in · CPCIN · Presenças · CPP · Vendas · CAC · Faturamento · ROAS · **Link**). Anúncio,
+- **Top Anúncios** e **Piores Anúncios** — 23 colunas + coluna **Status** (Anúncio · Status ·
+  Campanha · Conjunto · Gasto · Impr · CPM · CTR · Leads · CPL · MQLs · Tx‑MQL · CPMQL · Agendamentos ·
+  Tx‑Agend. · CPAG · Reuniões · No‑Show · CPRR · Vendas · CAC · Faturamento · ROAS · **Link**). Anúncio,
   Status e Link ficam **sticky** (visíveis sem rolar). Ranking pelo **resultado mais profundo
-  disponível** (Venda→Presença→Check‑in→MQL), amostra relevante primeiro; sem amostra → badge
+  disponível** (Venda→Reunião Realizada→Agendamento→MQL), amostra relevante primeiro; sem amostra → badge
   **"Em observação"** (nunca "vencedor"/"ruim" por 1 resultado ou por CTR/CPM/CPL isolados).
   Limiares em `build.py`: `SAMPLE_MIN_SPEND`, `SAMPLE_MIN_MQLS`, `TOP_ADS_N`. Scroll lateral
   **contido na tabela** (`.rel-adt` → `table-layout:auto`).
@@ -138,11 +138,11 @@ e, abaixo, acrescenta 3 blocos novos + um painel de metas editável:
   template não inclui automação de geração por IA** — `relatorios.json` vem vazio; preencha
   manualmente ou plugue sua própria automação (ver checklist no topo deste arquivo).
 
-Funil completo (ajuste as etapas ao cliente): `Impressões → Cliques → Leads → MQLs →
-Check-ins → Presenças → Vendas → Faturamento`. Enquanto só houver mídia paga × Leads, o
-funil vai até MQL; Check-ins/Presenças/Vendas/Fat aparecem "-" até chegar a lista do
-comercial/evento — quando os campos `checkins`/`presencas`/`vendas`/`fat` forem somados
-em `buildAgg/daily/totals`, `salesOf()` acende tudo sozinho.
+Funil completo (venda 1:1 por reunião — Sessão Estratégica): `Impressões → Cliques → Leads →
+MQLs → Agendamentos → Reuniões Realizadas → Vendas → Faturamento`. Enquanto só houver mídia
+paga × Leads, o funil vai até MQL; Agendamentos/Reuniões Realizadas/Vendas/Fat aparecem "-" até
+chegar a lista do comercial — quando os campos `agendamentos`/`reunioes`/`vendas`/`fat` forem
+somados em `buildAgg/daily/totals`, `salesOf()` acende tudo sozinho.
 
 ### Link do criativo (aba de mídia paga)
 `build.py` lê uma coluna opcional de permalink do criativo na aba de mídia →

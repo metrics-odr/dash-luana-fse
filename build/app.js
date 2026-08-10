@@ -50,36 +50,36 @@ function derive(a){
     convlp:pv?a.leads/pv:null,
     cpl:a.leads?g/a.leads:null, cpmql:a.mqls?g/a.mqls:null, tx:a.leads?a.mqls/a.leads:null};
 }
-/* --------- FUNIL PROFUNDO: Check-in → Presença → Venda (aguardando dados) ---------
-   Funil do evento presencial high-ticket:
-     Impressões → Cliques → Leads → MQLs → Check-ins → Presenças → Vendas → Faturamento.
-   Quando a fonte do comercial/evento chegar, some `checkins`, `presencas`,
+/* --------- FUNIL PROFUNDO: Agendamento → Reunião Realizada → Venda (aguardando dados) ---------
+   Funil de venda 1:1 por reunião (Sessão Estratégica):
+     Impressões → Cliques → Leads → MQLs → Agendamentos → Reuniões Realizadas → Vendas → Faturamento.
+   Quando a fonte do comercial chegar, some `agendamentos`, `reunioes`,
    `vendas` e `fat` por linha em buildAgg/daily/totals e TODA a UI acende sozinha
    (funil, cards, colunas das tabelas, Top/Piores anúncios). Enquanto não houver,
    cada métrica derivada retorna null -> "-". */
 function salesOf(a){
   const g=(a?a.sp:0)*taxf();
   const mqls=(a&&a.mqls)||0;
-  const checkins=(a&&a.checkins)||0, presencas=(a&&a.presencas)||0;
+  const agendamentos=(a&&a.agendamentos)||0, reunioes=(a&&a.reunioes)||0;
   const vendas=(a&&a.vendas)||0, fat=(a&&a.fat)||0;
-  const hasCk=checkins>0, hasPr=presencas>0, hasVd=vendas>0||fat>0;
+  const hasAg=agendamentos>0, hasRe=reunioes>0, hasVd=vendas>0||fat>0;
   return {
-    // MQL → Check-in
-    checkins:  hasCk?checkins:null,
-    txcheckin: hasCk&&mqls?checkins/mqls:null,   // check-ins / MQLs
-    cpcin:     hasCk?g/checkins:null,             // custo por check-in
-    // Check-in → Presença
-    presencas: hasPr?presencas:null,
-    txpres:    hasPr&&hasCk?presencas/checkins:null,  // presenças / check-ins
-    cpp:       hasPr?g/presencas:null,                // custo por presença
-    // Presença → Venda
-    vendas:    hasVd?vendas:null,
-    txvenda:   hasVd&&hasPr?vendas/presencas:null,    // vendas / presenças
-    fat:       hasVd?fat:null,
-    cac:       hasVd&&vendas?g/vendas:null,
-    roas:      hasVd&&g?fat/g:null,
-    tm:        hasVd&&vendas?fat/vendas:null,
-    convmql:   hasVd&&mqls?vendas/mqls:null,
+    // MQL → Agendamento
+    agendamentos: hasAg?agendamentos:null,
+    txag:         hasAg&&mqls?agendamentos/mqls:null,     // agendamentos / MQLs
+    cpag:         hasAg?g/agendamentos:null,               // custo por agendamento
+    // Agendamento → Reunião Realizada
+    reunioes:     hasRe?reunioes:null,
+    txnoshow:     hasRe&&hasAg?1-(reunioes/agendamentos):null,  // no-show = 1 - comparecimento
+    cprr:         hasRe?g/reunioes:null,                   // custo por reunião realizada
+    // Reunião Realizada → Venda
+    vendas:       hasVd?vendas:null,
+    txvenda:      hasVd&&hasRe?vendas/reunioes:null,       // vendas / reuniões realizadas
+    fat:          hasVd?fat:null,
+    cac:          hasVd&&vendas?g/vendas:null,
+    roas:         hasVd&&g?fat/g:null,
+    tm:           hasVd&&vendas?fat/vendas:null,
+    convmql:      hasVd&&mqls?vendas/mqls:null,
   };
 }
 function buildAgg(fL,fM,dim){
@@ -518,15 +518,15 @@ function adStructMap(fM,fL){
 /* amostra relevante para JULGAR o anúncio (senão: "Em observação"). O limiar de
    MQLs vem do painel de metas (volume mínimo amostral), editável ao vivo. */
 function adSampleOk(a){ return a.sp>=SAMPLE_MIN_SPEND && a.mqls>=METAS.volMin; }
-/* qualidade pelo resultado MAIS PROFUNDO disponível (venda>presença>check-in>MQL>lead):
+/* qualidade pelo resultado MAIS PROFUNDO disponível (venda>reunião>agendamento>MQL>lead):
    tier alto = etapa mais profunda; dentro do tier, mais volume e menor custo = melhor. */
 function adQuality(a){
   const d=derive(a), s=salesOf(a);
-  if(s.vendas!=null)    return {tier:4, vol:s.vendas,    cost:s.cac==null?Infinity:s.cac};
-  if(s.presencas!=null) return {tier:3, vol:s.presencas, cost:s.cpp==null?Infinity:s.cpp};
-  if(s.checkins!=null)  return {tier:2, vol:s.checkins,  cost:s.cpcin==null?Infinity:s.cpcin};
-  if(a.mqls>0)          return {tier:1, vol:a.mqls,      cost:d.cpmql==null?Infinity:d.cpmql};
-  return                       {tier:0, vol:a.leads,     cost:d.cpl==null?Infinity:d.cpl};
+  if(s.vendas!=null)        return {tier:4, vol:s.vendas,       cost:s.cac==null?Infinity:s.cac};
+  if(s.reunioes!=null)      return {tier:3, vol:s.reunioes,     cost:s.cprr==null?Infinity:s.cprr};
+  if(s.agendamentos!=null)  return {tier:2, vol:s.agendamentos, cost:s.cpag==null?Infinity:s.cpag};
+  if(a.mqls>0)              return {tier:1, vol:a.mqls,         cost:d.cpmql==null?Infinity:d.cpmql};
+  return                           {tier:0, vol:a.leads,        cost:d.cpl==null?Infinity:d.cpl};
 }
 function cmpBest(a,b){ const qa=adQuality(a), qb=adQuality(b);   // <0 => a antes (melhor)
   if(qa.tier!==qb.tier) return qb.tier-qa.tier;
@@ -542,8 +542,8 @@ const AD_COLS=[
   {k:'camp',label:'Campanha',dim:true},{k:'adset',label:'Conjunto',dim:true},
   {k:'gasto',label:'Gasto'},{k:'im',label:'Impr.'},{k:'cpm',label:'CPM'},{k:'ctr',label:'CTR'},
   {k:'leads',label:'Leads'},{k:'cpl',label:'CPL'},{k:'mqls',label:'MQLs'},{k:'tx',label:'Tx‑MQL'},{k:'cpmql',label:'CPMQL'},
-  {k:'checkins',label:'Check‑ins'},{k:'txcheckin',label:'Tx‑Check‑in'},{k:'cpcin',label:'CPCIN'},
-  {k:'presencas',label:'Presenças'},{k:'cpp',label:'CPP'},
+  {k:'agendamentos',label:'Agendamentos'},{k:'txag',label:'Tx‑Agend.'},{k:'cpag',label:'CPAG'},
+  {k:'reunioes',label:'Reuniões'},{k:'noshow',label:'No‑Show'},{k:'cprr',label:'CPRR'},
   {k:'vendas',label:'Vendas'},{k:'cac',label:'CAC'},{k:'fat',label:'Faturamento'},{k:'roas',label:'ROAS'},
   {k:'link',label:'Link',dim:true,stk:'r'},
 ];
@@ -552,8 +552,8 @@ function adRowCells(ad,a,struct){
   return {ad, camp:struct.camp, adset:struct.adset,
     gasto:d.gasto, im:a.im, cpm:d.cpm, ctr:d.ctr,
     leads:a.leads, cpl:d.cpl, mqls:a.mqls, tx:d.tx, cpmql:d.cpmql,
-    checkins:s.checkins, txcheckin:s.txcheckin, cpcin:s.cpcin,
-    presencas:s.presencas, cpp:s.cpp,
+    agendamentos:s.agendamentos, txag:s.txag, cpag:s.cpag,
+    reunioes:s.reunioes, noshow:s.txnoshow, cprr:s.cprr,
     vendas:s.vendas, cac:s.cac, fat:s.fat, roas:s.roas,
     link:adLinkCell(ad),
     _cpmql:d.cpmql, _cac:s.cac, status:null};   // valores crus p/ colorir vs meta
@@ -569,11 +569,12 @@ function relRenderAdTable(id,list){
     {key:'leads',label:'Leads',type:'int'},{key:'cpl',label:'CPL',type:'brl'},
     {key:'mqls',label:'MQLs',type:'int'},{key:'tx',label:'Tx‑MQL',type:'pct'},
     {key:'cpmql',label:'CPMQL',type:'brl'},
-    {key:'checkins',label:'Check‑ins',type:'int'},
-    {key:'txcheckin',label:'Tx‑Check‑in',type:'pct'},
-    {key:'cpcin',label:'CPCIN',type:'brl'},
-    {key:'presencas',label:'Presenças',type:'int'},
-    {key:'cpp',label:'CPP',type:'brl'},
+    {key:'agendamentos',label:'Agendamentos',type:'int'},
+    {key:'txag',label:'Tx‑Agend.',type:'pct'},
+    {key:'cpag',label:'CPAG',type:'brl'},
+    {key:'reunioes',label:'Reuniões',type:'int'},
+    {key:'noshow',label:'No‑Show',type:'pct'},
+    {key:'cprr',label:'CPRR',type:'brl'},
     {key:'vendas',label:'Vendas',type:'int'},
     {key:'cac',label:'CAC',type:'brl'},
     {key:'fat',label:'Faturamento',type:'brl'},
