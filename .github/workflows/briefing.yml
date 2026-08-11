@@ -46,12 +46,12 @@ jobs:
 
       - name: Commit e push se houve mudança
         run: |
-          if git diff --quiet -- build/relatorios_dados.json; then
+          git add build/relatorios_dados.json
+          if git diff --cached --quiet -- build/relatorios_dados.json; then
             echo "Sem mudanças em build/relatorios_dados.json — nada a commitar."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add build/relatorios_dados.json
           git commit -m "Atualiza dados brutos do Relatório (pré-Insights)"
           git push origin HEAD:main
