@@ -140,16 +140,24 @@ e, abaixo, acrescenta 3 blocos novos + um painel de metas editável:
   **contido na tabela** (`.rel-adt` → `table-layout:auto`).
 - **Insights de Tráfego** — texto por período redigido pelo **Claude** (linguagem de
   gestor de tráfego, profundo mas sem enrolação), lido de `build/relatorios.json`
-  (sem API no build/navegador — o site só exibe o texto já pronto). 7 blocos
-  fixos: Resumo (com comparação 7/14/30 d) · Leitura do funil · Classificação por
-  campanha/conjunto (tag + critério numérico) · **Gargalo de dado (prioridade alta)**
-  · Ações (com %, R$, dias) · Próxima decisão (gatilho + prazo) · **Briefing do Gestor**
-  (resumo executivo em prosa + recomendações de corte/escala nomeadas). Cita a meta ou
-  sinaliza "meta não definida". Chaves de período fixas
-  (`hoje/ontem/3d/7d/14d/30d/mes/mespass/todo`), tags `Escalar/Otimizar/Cortar/Observar`.
-  Regras completas em `build/GUIA-RELATORIOS.md` (formato) +
-  `build/GUIA-INTERPRETACAO-METRICAS.md` (diagnóstico por métrica). Ver "Briefing
-  automático do gestor" abaixo.
+  (sem API no build/navegador — o site só exibe o texto já pronto). Formato em **4
+  quadrantes** por período: 1) Resumo executivo + **nota de saúde do funil (0–10)**
+  + bloco pronto para copiar no WhatsApp; 2) Diagnóstico do funil (comparação com
+  período anterior, gargalos, hipóteses); 3) Campanhas/estruturas/anúncios campeões
+  (estrutura completa campanha→conjunto→anúncio, criativos em múltiplas estruturas
+  analisados por ocorrência); 4) Ações priorizadas (Fazer hoje/Escalar/Manter/
+  Observar/Otimizar/Cortar/Produzir/Evitar/Próxima revisão). Cada período compara
+  com o período anterior **correto para aquela janela** (regra em
+  `relatorio_lib.previous_period` — ex.: "mês" vs. mesmo intervalo de dias do mês
+  anterior, "máximo" vs. metade antiga do histórico, nunca período inventado).
+  Chaves de período fixas (`hoje/ontem/3d/7d/14d/30d/mes/mespass/todo`), tags
+  `Escalar/Otimizar/Cortar/Observar`. Toda a aritmética (totais, variações %/pp,
+  nota de saúde, ranking, formatação do bloco WhatsApp) é pré-calculada em
+  `build/relatorios_dados.json` — a Routine só interpreta, nunca recalcula (economia
+  de tokens). Regras completas em `build/GUIA-RELATORIOS.md` (formato/schema) +
+  `build/GUIA-INTERPRETACAO-METRICAS.md` (diagnóstico por métrica + ABO/CBO + unidade
+  de análise do anúncio). Ver "Briefing automático do gestor" abaixo. `app.js` ainda
+  reconhece o formato antigo (`{"html": "…"}`) como fallback até a próxima geração real.
 
 ### Briefing automático do gestor (Routine do Claude, sem chamada à API Anthropic)
 `build/relatorios.json` é escrito 1×/dia às **23:59 BRT** por uma **Routine do

@@ -26,7 +26,10 @@ from datetime import datetime, timedelta
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import build as bp  # reaproveita fetch/parse/process/constantes de build.py
-from relatorio_lib import BRT, d, build_periods, in_range, agg, derived, shift_back
+from relatorio_lib import (
+    BRT, d, build_periods, in_range, agg, derived, shift_back,
+    previous_period, compare, funnel_health, money, pct, num,
+)
 
 
 def daily_series(meta: list[dict], leads: list[dict], start, end, camp=None, adset=None, ad=None) -> list[dict]:
@@ -103,26 +106,99 @@ def breakdown(meta: list[dict], leads: list[dict], start, end, dim: str, camp_fi
     return out
 
 
-def periodo_payload(meta: list[dict], leads: list[dict], today, start, end) -> dict:
+def consolidado_criativos(por_anuncio: list[dict]) -> list[dict]:
+    """Agrupa as ocorrências (campanha+conjunto+anúncio) de `por_anuncio` pelo
+    NOME do anúncio — visão consolidada do criativo (regra §11-A do briefing:
+    o mesmo criativo pode rodar em várias estruturas com resultados diferentes)."""
+    by_ad: dict[str, list[dict]] = {}
+    for row in por_anuncio:
+        by_ad.setdefault(row["anuncio"], []).append(row)
+
+    out = []
+    for ad, occs in by_ad.items():
+        spend = sum(o["spend"] for o in occs)
+        leads = sum(o["leads"] for o in occs)
+        mqls = sum(o["mqls"] for o in occs)
+        clicks = sum(o["clicks"] for o in occs)
+        impr = sum(o["impr"] for o in occs)
+        occs_com_mql = [o for o in occs if o["mqls"]]
+        melhor = min(occs_com_mql, key=lambda o: o["cpmql"]) if occs_com_mql else None
+        pior = max(occs_com_mql, key=lambda o: o["cpmql"]) if occs_com_mql else None
+        out.append({
+            "anuncio": ad,
+            "n_estruturas": len(occs),
+            "estruturas": [{"campanha": o["campanha"], "conjunto": o["conjunto"]} for o in occs],
+            "spend": round(spend, 2), "impr": impr, "clicks": clicks, "leads": leads, "mqls": mqls,
+            "cpm": round(spend / impr * 1000, 2) if impr else None,
+            "ctr": round(clicks / impr, 4) if impr else None,
+            "cpl": round(spend / leads, 2) if leads else None,
+            "txmql": round(mqls / leads, 4) if leads else None,
+            "cpmql": round(spend / mqls, 2) if mqls else None,
+            "melhor_estrutura": (
+                {"campanha": melhor["campanha"], "conjunto": melhor["conjunto"], "cpmql": melhor["cpmql"]}
+                if melhor else None
+            ),
+            "pior_estrutura": (
+                {"campanha": pior["campanha"], "conjunto": pior["conjunto"], "cpmql": pior["cpmql"]}
+                if pior and pior is not melhor else None
+            ),
+        })
+    out.sort(key=lambda r: -r["spend"])
+    return out
+
+
+def whatsapp_numeros(label: str, start, end, cur: dict, saude: dict) -> dict:
+    """Números já formatados (moeda/percentual) para o bloco copiável do
+    WhatsApp — a Routine do Claude só preenche destaques/ações em texto,
+    nunca recalcula nem inventa estes valores (regra §6 do briefing)."""
+    return {
+        "periodo_label": label,
+        "periodo_range": f"{start.strftime('%d/%m/%Y')} a {end.strftime('%d/%m/%Y')}",
+        "gasto": money(cur["spend"]), "cpm": money(cur["cpm"]), "ctr": pct(cur["ctr"]),
+        "connect_rate": "Não disponível", "conv_lp": "Não disponível",
+        "leads": num(cur["leads"]), "cpl": money(cur["cpl"]),
+        "mqls": num(cur["mqls"]), "cpa_cpmql": money(cur["cpmql"]),
+        "vendas": "Não disponível", "faturamento": "Não disponível",
+        "cac": "Não disponível", "roas": "Não disponível", "ticket_medio": "Não disponível",
+        "saude_funil": (
+            f"{saude['nota']:.1f}/10 — {saude['classificacao']}" + (" (provisória)" if saude["provisoria"] else "")
+            if saude["nota"] is not None else "Nota provisória — dados insuficientes"
+        ),
+    }
+
+
+def periodo_payload(meta: list[dict], leads: list[dict], today, start, end, key, date_min, date_max,
+                     meta_cpmql, meta_cac, volume_min) -> dict:
     cur = derived(agg(meta, leads, start, end))
     ref7 = derived(agg(meta, leads, today - timedelta(days=6), today))
     ref14 = derived(agg(meta, leads, today - timedelta(days=13), today))
     ref30 = derived(agg(meta, leads, today - timedelta(days=29), today))
-    p1s, p1e = shift_back(start, end, 1)
-    anterior = derived(agg(meta, leads, p1s, p1e))
+
+    p_start, p_end, metodo = previous_period(key, start, end, today, date_min, date_max)
+    anterior = derived(agg(meta, leads, p_start, p_end)) if p_start else None
+
+    saude = funnel_health(cur, ref30, meta_cpmql, meta_cac, volume_min, [ref7, ref14, ref30])
+    por_anuncio = breakdown(meta, leads, start, end, "ad")
+
     return {
         "range": {"start": start.strftime("%Y-%m-%d"), "end": end.strftime("%Y-%m-%d")},
         "totais": totais_dict(cur),
+        "nota_saude": saude,
+        "whatsapp_numeros": whatsapp_numeros("", start, end, cur, saude),
         "comparativos": {
             "7d": totais_dict(ref7), "14d": totais_dict(ref14), "30d": totais_dict(ref30),
-            "periodo_anterior_mesmo_tamanho": {
-                "range": {"start": p1s.strftime("%Y-%m-%d"), "end": p1e.strftime("%Y-%m-%d")},
-                **totais_dict(anterior),
+            "periodo_anterior": {
+                "range": ({"start": p_start.strftime("%Y-%m-%d"), "end": p_end.strftime("%Y-%m-%d")}
+                          if p_start else None),
+                "metodo": metodo,
+                "totais": totais_dict(anterior) if anterior else None,
+                "variacao": compare(cur, anterior),
             },
         },
         "por_campanha": breakdown(meta, leads, start, end, "camp"),
         "por_conjunto": breakdown(meta, leads, start, end, "adset"),
-        "por_anuncio": breakdown(meta, leads, start, end, "ad"),
+        "por_anuncio": por_anuncio,
+        "criativos_consolidado": consolidado_criativos(por_anuncio),
     }
 
 
@@ -163,7 +239,10 @@ def main():
         "periodos": {},
     }
     for key, (start, end, label) in periods.items():
-        out["periodos"][key] = {"label": label, **periodo_payload(meta, leads, today, start, end)}
+        payload = periodo_payload(meta, leads, today, start, end, key, date_min, date_max,
+                                   bp.META_CPMQL, bp.META_CAC, bp.VOLUME_MIN_AMOSTRAL)
+        payload["whatsapp_numeros"]["periodo_label"] = label
+        out["periodos"][key] = {"label": label, **payload}
 
     os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
     with open(args.out, "w", encoding="utf-8") as f:

@@ -415,6 +415,32 @@ verificar como ela afeta todas as etapas posteriores.
   histórica da operação. Priorizar **tendência ao longo do tempo** sobre
   valor absoluto isolado.
 
+## Unidade de análise do anúncio: campanha + conjunto + anúncio
+
+O mesmo anúncio (mesmo nome) pode rodar em campanhas/conjuntos diferentes com
+resultados diferentes. A unidade operacional obrigatória é sempre a tripla
+**campanha + conjunto + anúncio** (`por_anuncio` em `relatorios_dados.json` já
+vem quebrado nessa granularidade). Nunca dê uma única decisão global a um
+anúncio sem checar `criativos_consolidado` — se `n_estruturas > 1`, faça as
+duas análises: consolidada (resultado total do criativo) e por ocorrência
+(cada estrutura recebe decisão própria). "Cortar esta ocorrência nesta
+estrutura" é uma decisão diferente de "cortar o criativo em todas as
+estruturas" — nunca generalize corte de 1 estrutura fraca para o criativo
+inteiro que é vencedor nas demais.
+
+## Nível correto de orçamento (ABO x CBO)
+
+Em **ABO** (orçamento por conjunto), o ajuste de verba é feito no **conjunto
+de anúncios**. Em **CBO** (orçamento por campanha), o ajuste é na
+**campanha**. No **anúncio**, as ações possíveis são ativar, pausar,
+duplicar, substituir ou replicar — nunca "aumentar a verba do anúncio" como
+se o orçamento estivesse configurado nele. A fonte de dados atual (planilha
+de mídia paga) **não informa o tipo de orçamento** por estrutura — nunca
+assuma ABO ou CBO; quando não for possível confirmar, escreva a recomendação
+de forma neutra ("ajustar o orçamento no nível do conjunto/campanha,
+conforme a configuração real — confirmar no Gerenciador de Anúncios antes de
+executar").
+
 ## Como citar "padrão de mercado" no texto
 
 Os limiares/benchmarks deste guia (ex.: Connect Rate crítico abaixo de 60%)
