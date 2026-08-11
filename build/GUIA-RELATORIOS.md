@@ -10,16 +10,22 @@
 
 ## Como preencher `build/relatorios.json`
 
-Este template **não inclui automação de geração por IA** (nenhum workflow,
-Worker ou script chama uma API de LLM). O arquivo `build/relatorios.json` vem
-vazio (9 chaves de período, `html:""`) e é lido pelo build normalmente — sem
-esse conteúdo, a aba mostra tudo (cards/tabelas/gráficos) menos os Insights.
+Este projeto usa `build/gerar_relatorios.py` para preencher `build/relatorios.json`
+sozinho, aplicando **de forma determinística** (aritmética + templates de
+texto, sem chamar nenhuma API de IA/LLM) todas as regras deste guia — custo
+zero. O script roda via `.github/workflows/briefing.yml` (agendado 3x/dia +
+`workflow_dispatch` manual) e commita o resultado direto na `main`, o que
+dispara o `deploy.yml` e republica o dashboard. Rode manualmente com:
 
-Para preencher: edite `build/relatorios.json` manualmente (ou plugue uma
-automação própria — GitHub Action + qualquer API de IA, rodando antes do
-`deploy.yml`) seguindo o formato e as regras deste guia, faça commit na
-`main`. Se quiser automatizar depois, documente separadamente o novo pipeline
-(cron, secrets, prompt) — isso está fora do escopo deste template.
+```bash
+python build/gerar_relatorios.py --leads-file leads.csv --meta-file meta.csv --out build/relatorios.json
+```
+
+Alternativamente, `build/relatorios.json` pode ser editado à mão (ou por uma
+automação própria com IA, rodando antes do `deploy.yml`) seguindo o mesmo
+formato — o build só lê o arquivo, não importa como foi gerado. Se o arquivo
+não existir ou vier vazio, a aba mostra tudo (cards/tabelas/gráficos) menos
+os Insights.
 
 ## Contexto do funil
 
