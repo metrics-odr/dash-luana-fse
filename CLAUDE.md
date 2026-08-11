@@ -34,11 +34,11 @@ Marque cada item ao configurar este template para um cliente novo. Ordem sugerid
    apareceu em texto puro em algum chat/documento — revogue e gere outro.
 7. **Aba Relatório / Insights de Tráfego** (`build/GUIA-RELATORIOS.md`):
    - [ ] Ajustar o contexto do funil (produto/oferta/etapas) no topo do guia.
-   - [ ] `build/relatorios.json` começa **vazio** — preencha manualmente
-     seguindo o formato do guia, ou plugue uma automação própria (fora do
-     escopo deste template: nenhum Worker/Action aqui chama API de IA).
-   - [ ] Se for automatizar depois, documente separadamente o novo pipeline
-     (cron, secrets do provedor de IA escolhido, prompt).
+   - [ ] `build/relatorios.json` já é preenchido automaticamente pelo
+     "Briefing automático do gestor" (`build/gerar_relatorios.py` +
+     `.github/workflows/briefing.yml`, ver seção acima) — sem custo de IA.
+     Se quiser um texto redigido por IA no lugar/além disso, plugue sua
+     própria automação (fora do escopo deste template).
 8. **Teste local** antes de publicar: `python build/build.py --leads-file
    leads.csv --meta-file meta.csv --out dist/index.html` com CSVs de
    amostra; confira as 3 páginas, tema claro/escuro e a multi-seleção.
@@ -102,9 +102,11 @@ build/template.html       # esqueleto HTML. Placeholders __STYLES__, __APP_JS__,
 build/identidade-visual.css  # TODAS as cores (tema claro=padrão / escuro). Mexa AQUI p/ trocar só cor
 build/estilos.css         # layout/componentes (sidebar, topbar, period-picker, funil, tabelas, gráficos, aba Relatório)
 build/app.js              # lógica + renderização (KPIs, funil, tabelas, filtro cruzado, period-picker, heatmap, Relatório)
-build/relatorios.json     # Insights de Tráfego por período (aba Relatório) — VERSIONADO; lido no build, sem API. Vem VAZIO neste template.
+build/relatorios.json     # Insights de Tráfego por período (aba Relatório) — VERSIONADO; lido no build, sem API.
+build/gerar_relatorios.py # gera relatorios.json aplicando o guia abaixo, sem IA (ver "Briefing automático" acima)
 build/GUIA-RELATORIOS.md  # guia de métricas do funil + como redigir os Insights da aba Relatório
-.github/workflows/deploy.yml  # roda build.py e publica no Pages (workflow_dispatch + schedule + push)
+.github/workflows/deploy.yml    # roda build.py e publica no Pages (workflow_dispatch + schedule + push)
+.github/workflows/briefing.yml  # roda gerar_relatorios.py e commita relatorios.json na main (cron 3x/dia)
 dist/index.html           # saída gerada (gitignored; o Actions reconstrói)
 GUIA-REPLICACAO.md        # como replicar este modelo para outros relatórios/clientes
 SETUP-CRON.md             # valores exatos do cron-job.org (com marcadores a preencher)
@@ -137,6 +139,20 @@ e, abaixo, acrescenta 3 blocos novos + um painel de metas editável:
   `Escalar/Otimizar/Cortar/Observar`. Regras completas em `build/GUIA-RELATORIOS.md`. **Este
   template não inclui automação de geração por IA** — `relatorios.json` vem vazio; preencha
   manualmente ou plugue sua própria automação (ver checklist no topo deste arquivo).
+
+### Briefing automático do gestor (sem custo de IA)
+`build/gerar_relatorios.py` gera `build/relatorios.json` sozinho, aplicando as
+regras do `GUIA-RELATORIOS.md` (Resumo/Leitura do funil/Classificação
+Escalar‑Otimizar‑Cortar‑Observar/Gargalo de dado/Ações/Próxima decisão) de forma
+**determinística** (aritmética + templates de texto em Python) — **nenhuma
+chamada de API de IA/Anthropic**, custo zero. Roda via
+`.github/workflows/briefing.yml` (cron 3x/dia + `workflow_dispatch` manual),
+que commita `build/relatorios.json` direto na `main` quando muda; isso dispara
+o `deploy.yml` (reage a `build/**`) e republica o dashboard. Limitação
+conhecida: usa `META_CPMQL`/`META_CAC`/`VOLUME_MIN_AMOSTRAL`/`N_DIAS_CORTE` de
+`build.py` (defaults), não o que o gestor editou no painel da aba Relatório
+(fica em `localStorage` do navegador — o build server-side não enxerga);
+ajuste os defaults em `build.py` se quiser metas fixas refletidas no texto.
 
 Funil completo (venda 1:1 por reunião — Sessão Estratégica): `Impressões → Cliques → Leads →
 MQLs → Agendamentos → Reuniões Realizadas → Vendas → Faturamento`. Enquanto só houver mídia

@@ -1,0 +1,51 @@
+name: Gerar Briefing do Gestor (Insights de Tráfego)
+
+# Roda a rotina determinística (build/gerar_relatorios.py) que recalcula
+# build/relatorios.json com base nas regras de build/GUIA-RELATORIOS.md.
+# NÃO chama nenhuma API de IA/Anthropic — é só aritmética sobre os mesmos
+# dados do dashboard (mídia paga x Leads), então roda de graça no runner do
+# GitHub Actions.
+#
+# Ao commitar relatorios.json na main, o workflow deploy.yml (que reage a
+# mudanças em build/**) reconstroi e republica o dashboard automaticamente.
+on:
+  workflow_dispatch:
+  schedule:
+    # 3x ao dia (09h, 14h, 19h horário de Brasília = 12h, 17h, 22h UTC)
+    - cron: "0 12,17,22 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gerar-briefing
+  cancel-in-progress: false
+
+jobs:
+  gerar-briefing:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Gerar Insights de Tráfego (sem IA, só regras do guia)
+        run: python build/gerar_relatorios.py --out build/relatorios.json
+
+      - name: Commit e push se houve mudança
+        run: |
+          if git diff --quiet -- build/relatorios.json; then
+            echo "Sem mudanças em build/relatorios.json — nada a commitar."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add build/relatorios.json
+          git commit -m "Atualiza Insights de Tráfego (briefing automático)"
+          git push origin HEAD:main
