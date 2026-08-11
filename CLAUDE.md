@@ -32,13 +32,17 @@ Marque cada item ao configurar este template para um cliente novo. Ordem sugerid
    gerar token fine-grained novo (Actions: read/write, só neste repo), criar o
    job com URL/headers/body do guia. **Nunca** reutilize um token que já
    apareceu em texto puro em algum chat/documento — revogue e gere outro.
-7. **Aba Relatório / Insights de Tráfego** (`build/GUIA-RELATORIOS.md`):
-   - [ ] Ajustar o contexto do funil (produto/oferta/etapas) no topo do guia.
-   - [ ] `build/relatorios.json` já é preenchido automaticamente pelo
-     "Briefing automático do gestor" (`build/gerar_relatorios.py` +
-     `.github/workflows/briefing.yml`, ver seção acima) — sem custo de IA.
-     Se quiser um texto redigido por IA no lugar/além disso, plugue sua
-     própria automação (fora do escopo deste template).
+7. **Aba Relatório / Insights de Tráfego** (`build/GUIA-RELATORIOS.md` +
+   `build/GUIA-INTERPRETACAO-METRICAS.md`):
+   - [ ] Ajustar o contexto do funil (produto/oferta/etapas) no topo do
+     `GUIA-RELATORIOS.md`.
+   - [ ] `build/relatorios.json` é preenchido automaticamente pelo "Briefing
+     automático do gestor" (ver seção acima): `coletar_dados_relatorio.py` +
+     `briefing.yml` calculam os números (sem IA); uma **Routine do Claude**
+     agendada (Claude Code Remote — fora do GitHub Actions) lê os guias e
+     redige o texto 1×/dia. Ao replicar para outro cliente, recrie a Routine
+     (`create_trigger`) apontando para o novo repo — não é algo que o
+     `git push` sozinho reativa.
 8. **Teste local** antes de publicar: `python build/build.py --leads-file
    leads.csv --meta-file meta.csv --out dist/index.html` com CSVs de
    amostra; confira as 3 páginas, tema claro/escuro e a multi-seleção.
@@ -103,10 +107,14 @@ build/identidade-visual.css  # TODAS as cores (tema claro=padrão / escuro). Mex
 build/estilos.css         # layout/componentes (sidebar, topbar, period-picker, funil, tabelas, gráficos, aba Relatório)
 build/app.js              # lógica + renderização (KPIs, funil, tabelas, filtro cruzado, period-picker, heatmap, Relatório)
 build/relatorios.json     # Insights de Tráfego por período (aba Relatório) — VERSIONADO; lido no build, sem API.
-build/gerar_relatorios.py # gera relatorios.json aplicando o guia abaixo, sem IA (ver "Briefing automático" acima)
-build/GUIA-RELATORIOS.md  # guia de métricas do funil + como redigir os Insights da aba Relatório
+build/relatorios_dados.json      # números brutos por período (insumo p/ a Routine escrever relatorios.json) — não lido pelo site
+build/relatorio_lib.py           # datas/agregação compartilhadas (gerar_relatorios.py + coletar_dados_relatorio.py)
+build/coletar_dados_relatorio.py # gera relatorios_dados.json (só números, sem texto) — roda no briefing.yml, 1x/dia
+build/gerar_relatorios.py        # gera relatorios.json determinístico (sem IA) — fallback MANUAL, não roda mais sozinho
+build/GUIA-RELATORIOS.md            # formato/estrutura dos Insights da aba Relatório (os 7 blocos)
+build/GUIA-INTERPRETACAO-METRICAS.md # regras de diagnóstico por métrica (High Ticket) — leitura obrigatória p/ redigir
 .github/workflows/deploy.yml    # roda build.py e publica no Pages (workflow_dispatch + schedule + push)
-.github/workflows/briefing.yml  # roda gerar_relatorios.py e commita relatorios.json na main (cron 3x/dia)
+.github/workflows/briefing.yml  # roda coletar_dados_relatorio.py e commita relatorios_dados.json na main (cron 1x/dia, 23h50 BRT)
 dist/index.html           # saída gerada (gitignored; o Actions reconstrói)
 GUIA-REPLICACAO.md        # como replicar este modelo para outros relatórios/clientes
 SETUP-CRON.md             # valores exatos do cron-job.org (com marcadores a preencher)
@@ -130,26 +138,39 @@ e, abaixo, acrescenta 3 blocos novos + um painel de metas editável:
   **"Em observação"** (nunca "vencedor"/"ruim" por 1 resultado ou por CTR/CPM/CPL isolados).
   Limiares em `build.py`: `SAMPLE_MIN_SPEND`, `SAMPLE_MIN_MQLS`, `TOP_ADS_N`. Scroll lateral
   **contido na tabela** (`.rel-adt` → `table-layout:auto`).
-- **Insights de Tráfego** — texto por período no formato de analista de performance
-  (foco em ação), lido de `build/relatorios.json` (sem API no build/navegador). 6 blocos
+- **Insights de Tráfego** — texto por período redigido pelo **Claude** (linguagem de
+  gestor de tráfego, profundo mas sem enrolação), lido de `build/relatorios.json`
+  (sem API no build/navegador — o site só exibe o texto já pronto). 7 blocos
   fixos: Resumo (com comparação 7/14/30 d) · Leitura do funil · Classificação por
   campanha/conjunto (tag + critério numérico) · **Gargalo de dado (prioridade alta)**
-  · Ações (com %, R$, dias) · Próxima decisão (gatilho + prazo). Cita a meta ou sinaliza
-  "meta não definida". Chaves de período fixas (`hoje/ontem/3d/7d/14d/30d/mes/mespass/todo`), tags
-  `Escalar/Otimizar/Cortar/Observar`. Regras completas em `build/GUIA-RELATORIOS.md`. **Este
-  template não inclui automação de geração por IA** — `relatorios.json` vem vazio; preencha
-  manualmente ou plugue sua própria automação (ver checklist no topo deste arquivo).
+  · Ações (com %, R$, dias) · Próxima decisão (gatilho + prazo) · **Briefing do Gestor**
+  (resumo executivo em prosa + recomendações de corte/escala nomeadas). Cita a meta ou
+  sinaliza "meta não definida". Chaves de período fixas
+  (`hoje/ontem/3d/7d/14d/30d/mes/mespass/todo`), tags `Escalar/Otimizar/Cortar/Observar`.
+  Regras completas em `build/GUIA-RELATORIOS.md` (formato) +
+  `build/GUIA-INTERPRETACAO-METRICAS.md` (diagnóstico por métrica). Ver "Briefing
+  automático do gestor" abaixo.
 
-### Briefing automático do gestor (sem custo de IA)
-`build/gerar_relatorios.py` gera `build/relatorios.json` sozinho, aplicando as
-regras do `GUIA-RELATORIOS.md` (Resumo/Leitura do funil/Classificação
-Escalar‑Otimizar‑Cortar‑Observar/Gargalo de dado/Ações/Próxima decisão) de forma
-**determinística** (aritmética + templates de texto em Python) — **nenhuma
-chamada de API de IA/Anthropic**, custo zero. Roda via
-`.github/workflows/briefing.yml` (cron 3x/dia + `workflow_dispatch` manual),
-que commita `build/relatorios.json` direto na `main` quando muda; isso dispara
-o `deploy.yml` (reage a `build/**`) e republica o dashboard. Limitação
-conhecida: usa `META_CPMQL`/`META_CAC`/`VOLUME_MIN_AMOSTRAL`/`N_DIAS_CORTE` de
+### Briefing automático do gestor (Routine do Claude, sem chamada à API Anthropic)
+`build/relatorios.json` é escrito 1×/dia às **23:59 BRT** por uma **Routine do
+Claude** (Claude Code Remote — mesma infraestrutura de sessão/agente deste
+repo, agendada; não é uma chamada paga à API Anthropic). Fluxo em 2 etapas,
+porque o ambiente da Routine não alcança `docs.google.com` (só o runner do
+GitHub Actions alcança — ver item 4 de "Publicação" abaixo):
+1. `build/coletar_dados_relatorio.py` (GitHub Actions, `.github/workflows/briefing.yml`,
+   1×/dia 23h50 BRT) agrega **só números** (totais, comparativos 7/14/30d + período
+   anterior, quebra por campanha/conjunto/anúncio com série diária) em
+   `build/relatorios_dados.json` e commita na `main`.
+2. A Routine do Claude (23h59 BRT) lê esse JSON + `build/GUIA-RELATORIOS.md` +
+   `build/GUIA-INTERPRETACAO-METRICAS.md`, redige `build/relatorios.json` (os 7
+   blocos, aplicando diagnóstico probabilístico — nunca métrica isolada) e faz
+   commit/push direto na `main`, disparando o `deploy.yml` (reage a `build/**`)
+   e republicando o dashboard.
+
+`build/gerar_relatorios.py` (gerador determinístico mais raso, sem IA) continua
+no repo só como **fallback manual** — não roda mais automaticamente; rode-o à
+mão se a Routine falhar num dia. Limitação conhecida (herdada por ambos os
+scripts): usam `META_CPMQL`/`META_CAC`/`VOLUME_MIN_AMOSTRAL`/`N_DIAS_CORTE` de
 `build.py` (defaults), não o que o gestor editou no painel da aba Relatório
 (fica em `localStorage` do navegador — o build server-side não enxerga);
 ajuste os defaults em `build.py` se quiser metas fixas refletidas no texto.

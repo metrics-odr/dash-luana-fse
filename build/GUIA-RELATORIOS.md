@@ -3,26 +3,55 @@
 > Texto lido de `build/relatorios.json` pela aba **Relatório** (seção "Insights
 > de Tráfego"). **Não faz nenhuma chamada de API no build nem no navegador** —
 > a página só exibe o texto já pronto. Os números vêm dos mesmos dados do site
-> (mídia paga × Leads); quem escrever o texto (você, um analista, ou uma
-> automação de IA que você configurar depois) apenas **interpreta e redige**.
+> (mídia paga × Leads); quem escreve o texto (hoje, uma Routine do Claude —
+> ver seção abaixo) apenas **interpreta e redige**.
 > A aba Relatório espelha a Visão Geral e, abaixo, mostra **Top Anúncios ·
 > Piores Anúncios · Insights de Tráfego**.
+>
+> **Este guia define o FORMATO/estrutura do texto.** As regras de
+> **diagnóstico** (como interpretar cada métrica, quando um número ruim não é
+> problema, o que analisar junto do quê) estão em
+> `build/GUIA-INTERPRETACAO-METRICAS.md` — leitura obrigatória antes de
+> redigir qualquer período.
 
-## Como preencher `build/relatorios.json`
+## Como `build/relatorios.json` é gerado (pipeline atual: Routine do Claude)
 
-Este projeto usa `build/gerar_relatorios.py` para preencher `build/relatorios.json`
-sozinho, aplicando **de forma determinística** (aritmética + templates de
-texto, sem chamar nenhuma API de IA/LLM) todas as regras deste guia — custo
-zero. O script roda via `.github/workflows/briefing.yml` (agendado 3x/dia +
-`workflow_dispatch` manual) e commita o resultado direto na `main`, o que
-dispara o `deploy.yml` e republica o dashboard. Rode manualmente com:
+`build/relatorios.json` é escrito 1×/dia às **23:59 BRT** por uma **Routine
+do Claude** (Claude Code Remote), não por uma chamada à API da Anthropic —
+é a mesma infraestrutura de sessão/agente usada neste repositório, só
+agendada. O fluxo tem 2 etapas, porque o ambiente onde a Routine roda não
+alcança `docs.google.com` (só o runner do GitHub Actions alcança):
+
+1. **Coleta de números (determinística, GitHub Actions)** —
+   `build/coletar_dados_relatorio.py` lê os CSVs (mídia paga × Leads) e
+   agrega **só aritmética** (totais, comparativos 7/14/30d e vs. período
+   anterior, quebra por campanha/conjunto/anúncio com série diária) em
+   `build/relatorios_dados.json`. Roda via `.github/workflows/briefing.yml`
+   (1×/dia, 23:50 BRT, + `workflow_dispatch` manual) e commita direto na
+   `main`. **Não é lido pelo site** — é só insumo intermediário.
+2. **Redação dos Insights (Claude, Routine agendada)** — 9 minutos depois,
+   uma sessão do Claude lê `build/relatorios_dados.json` +
+   `build/GUIA-RELATORIOS.md` (este arquivo, formato/estrutura) +
+   `build/GUIA-INTERPRETACAO-METRICAS.md` (regras de diagnóstico por
+   métrica) e escreve `build/relatorios.json` — o texto final, no formato
+   descrito abaixo — e faz commit/push direto na `main`, o que dispara o
+   `deploy.yml` e republica o dashboard.
+
+Testar a coleta de números manualmente:
+
+```bash
+python build/coletar_dados_relatorio.py --leads-file leads.csv --meta-file meta.csv --out build/relatorios_dados.json
+```
+
+`build/gerar_relatorios.py` (o gerador **determinístico**, sem IA, mais raso)
+continua no repo como **fallback manual** — não roda mais automaticamente.
+Se a Routine falhar num dia, rode-o pra garantir que a aba não fique vazia:
 
 ```bash
 python build/gerar_relatorios.py --leads-file leads.csv --meta-file meta.csv --out build/relatorios.json
 ```
 
-Alternativamente, `build/relatorios.json` pode ser editado à mão (ou por uma
-automação própria com IA, rodando antes do `deploy.yml`) seguindo o mesmo
+`build/relatorios.json` também pode ser editado à mão seguindo o mesmo
 formato — o build só lê o arquivo, não importa como foi gerado. Se o arquivo
 não existir ou vier vazio, a aba mostra tudo (cards/tabelas/gráficos) menos
 os Insights.
@@ -131,9 +160,17 @@ O texto deve **explicar** o ranking (por quê), não repeti-lo.
 
 ## Formato "Insights de Tráfego" (por período) — foco em AÇÃO
 
-> O tom é de **analista de performance**: cada período fecha com decisão, não
-> só leitura de número. Português, profundo mas sem enrolação. **Sempre** use
-> exatamente estes 5–6 blocos, nesta ordem (cada um é um `<h3>`):
+> O tom é de **gestor de tráfego experiente falando com outro gestor**:
+> profundo na análise, mas linguagem simples e direta — técnico **só** quando
+> for indispensável para justificar a conclusão. Cada período fecha com
+> decisão, não só leitura de número. Antes de redigir qualquer bloco, leia
+> por inteiro `build/GUIA-INTERPRETACAO-METRICAS.md` e aplique suas
+> heurísticas: **nunca julgue uma métrica isolada** — leia sempre junto com a
+> etapa anterior e a posterior do funil, compare com o histórico da própria
+> conta (usando a série diária/comparativos de `relatorios_dados.json`) e,
+> quando fizer sentido, com os benchmarks gerais de mercado do guia
+> (deixando claro que é referência do nicho, não dado medido deste cliente).
+> **Sempre** use exatamente estes 7 blocos, nesta ordem (cada um é um `<h3>`):
 
 1. **Resumo do período** — números brutos (gasto, leads, MQLs, Tx‑MQL, CPL, CPMQL)
    **+ comparação obrigatória contra as janelas de 7, 14 e 30 dias**. Toda métrica
@@ -168,6 +205,40 @@ O texto deve **explicar** o ranking (por quê), não repeti-lo.
    métrica de validação.
 6. **Próxima decisão** — **gatilho** (o que muda a classificação de cada campanha)
    **+ prazo/gasto** para revisitar (ex.: "revisar em 4 dias ou ~R$ 600 de gasto").
+7. **Briefing do Gestor** — resumo executivo corrido (parágrafos, sem enrolação,
+   pronto para copiar/enviar ao cliente ou ler em voz alta numa reunião),
+   cobrindo na ordem:
+   - **O que aconteceu** no período: leitura geral do funil (gasto → leads →
+     MQLs) e comparação com o histórico (7/14/30d e período anterior de
+     mesmo tamanho) em uma frase de abertura.
+   - **Diagnóstico com profundidade** — pelo menos 2–4 insights aplicando as
+     heurísticas do `GUIA-INTERPRETACAO-METRICAS.md` (diagnóstico
+     probabilístico, métrica lida junto da anterior/posterior, "isso é bom
+     mesmo parecendo ruim" ou vice-versa), no mesmo espírito destes
+     exemplos:
+     - *"CTR do anúncio X está baixo, mas o CAC/Tx-MQL segue saudável — não é
+       problema, é qualificação melhor."*
+     - *"O CPM subiu em quase todas as campanhas — parece leilão mais caro em
+       geral (ver se coincide com data comemorativa), não um problema de
+       criativo específico."*
+     - *"O Connect Rate do funil caiu abaixo do normal — investigar antes se
+       é mensuração (pixel/CAPI) ou página, olhando se leads/MQLs também
+       caíram junto."*
+   - **Sinalização de mercado**: quando uma métrica estiver fora do padrão
+     geral do nicho High Ticket (ex.: Connect Rate crítico <60%), citar isso
+     explicitamente como leitura de mercado, não só comparação interna.
+   - **Recomendações de corte/escala nomeadas** — cada recomendação cita a
+     estrutura específica (campanha, conjunto **ou** anúncio, pelo nome) e o
+     número que justifica (ex.: "escalar o conjunto XPTO +20% de verba: CPMQL
+     R$X, abaixo da média da conta em Y%"; "copiar os anúncios XYZ — CAC caindo
+     há 3 dias, hoje rodam só na campanha Z — para uma estrutura de escala,
+     ex. CBO com os Top Ads").
+   - Fecha com 1 frase de prioridade: qual é a ÚNICA coisa mais importante a
+     decidir/fazer com base neste período.
+
+   Este bloco é o único dos 7 com foco em **prosa corrida** (parágrafos), não
+   em listas técnicas — os blocos 1–6 continuam objetivos/estruturados; o
+   Briefing do Gestor é a síntese em linguagem de gestão.
 
 Ao citar um anúncio (ex. "AD05"), **sempre** diga a campanha (e o conjunto quando
 ajudar) — o mesmo nome de anúncio pode rodar em campanhas diferentes.
@@ -199,9 +270,9 @@ estiver ruim.
 ```json
 {
   "generated_at": "DD/MM/AAAA HH:MM",
-  "fonte": "Gerado a partir dos dados do funil (mídia paga × Leads).",
+  "fonte": "Insights de Tráfego redigidos pelo Claude (Routine diária, 23h59 BRT) a partir dos números agregados em relatorios_dados.json (mídia paga × Leads).",
   "periodos": {
-    "hoje":    {"html": "<h3>Resumo do período</h3><p>…</p><h3>Leitura do funil</h3><p>…</p><h3>Classificação por campanha/conjunto</h3><ul>…</ul><h3>Gargalo de dado — prioridade alta</h3><p>…</p><h3>Ações recomendadas</h3><p>…</p><h3>Próxima decisão</h3><p>…</p>"},
+    "hoje":    {"html": "<h3>Resumo do período</h3><p>…</p><h3>Leitura do funil</h3><p>…</p><h3>Classificação por campanha/conjunto</h3><ul>…</ul><h3>Gargalo de dado — prioridade alta</h3><p>…</p><h3>Ações recomendadas</h3><p>…</p><h3>Próxima decisão</h3><p>…</p><h3>Briefing do Gestor</h3><p>…</p>"},
     "ontem":   {"html": "…"},
     "3d":      {"html": "…"},
     "7d":      {"html": "…"},
@@ -219,7 +290,8 @@ estiver ruim.
   selecionados a aba mostra uma mensagem orientando a escolher um preset.
 - HTML permitido no `html`: `<h3> <p> <ul> <li> <b>` e
   `<span class="tag escala|otimiza|corte|observar">Escalar|Otimizar|Cortar|Observar</span>`
-  (a classe de "Otimizar" é `otimiza`, não `otimizar`).
+  (a classe de "Otimizar" é `otimiza`, não `otimizar`). O bloco "Briefing do
+  Gestor" usa só `<p>`/`<b>` (prosa corrida, sem `<ul>`).
 - Se um período não tiver dados, escreva um `html` curto dizendo que não houve
   investimento/atividade. Se o arquivo não existir ou vier vazio (como no
   template), a aba mostra tudo menos os Insights (cards/tabelas seguem
